@@ -33,7 +33,7 @@ public class CompteController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> creerCompte(@RequestBody CompteCreationRequest request) {
-        // Si ancien/nouveau non fournis, utiliser le champ legacy comme nouveau
+
         String ancien = request.getAncienNumeroTelephone();
         String nouveau = request.getNouveauNumeroTelephone();
         if ((ancien == null && nouveau == null) && request.getNumeroTelephone() != null) {
@@ -43,7 +43,7 @@ public class CompteController {
         if (nouveau != null) {
             created = compteService.creerCompteMajNumeroPourUsername(request.getUsername(), ancien, nouveau);
         } else {
-            // fallback historique
+
             created = compteService.creerComptePourUsername(request.getUsername(), request.getNumeroTelephone());
         }
         return ResponseEntity.ok(OMPayResponse.success(created, OMPayMessages.COMPTE_CREE_SUCCES));

@@ -43,10 +43,8 @@ public class UserServiceImpl implements UserService {
         List<Object[]> rows = userRepository.findAllUsersWithClientAndAdminNative();
         List<User> users = new ArrayList<>();
         for (Object[] row : rows) {
-            // columnas selection order (see repository query) :
-            // 0 u_id, 1 u_username, 2 u_password, 3 u_enabled,
-            // 4 c_id,5 c_email,6 c_prenom,7 c_nom,8 c_adresse,9 c_telephone,
-            // 10 a_id,11 a_admin_prenom,12 a_admin_nom
+
+
             User u = new User();
             try {
                 Object uId = row[0];
@@ -58,7 +56,6 @@ public class UserServiceImpl implements UserService {
             u.setPassword(row[2] != null ? row[2].toString() : null);
             u.setEnabled(row[3] != null ? Boolean.valueOf(row[3].toString()) : null);
 
-            // client fields
             u.setEmail(row[5] != null ? row[5].toString() : null);
             u.setPrenom(row[6] != null ? row[6].toString() : null);
             u.setNom(row[7] != null ? row[7].toString() : null);
@@ -101,12 +98,12 @@ public class UserServiceImpl implements UserService {
         List<UserFullDto> result = new ArrayList<>();
         for (Object[] row : rows) {
             UserFullDto dto = new UserFullDto();
-            // mapping order: see repository select
+
             try { if (row[0] != null) dto.setId(UUID.fromString(row[0].toString())); } catch (Exception e) { }
             dto.setUsername(row[1] != null ? row[1].toString() : null);
             dto.setEnabled(row[3] != null ? Boolean.valueOf(row[3].toString()) : null);
 
-            // client mapping
+
             if (row[4] != null || row[5] != null) {
                 ClientDto c = new ClientDto();
                 try { if (row[4] != null) c.setId(UUID.fromString(row[4].toString())); } catch (Exception e) { }
@@ -118,7 +115,7 @@ public class UserServiceImpl implements UserService {
                 dto.setClient(c);
             }
 
-            // admin mapping
+
             if (row[10] != null) {
                 AdminDto a = new AdminDto();
                 try { if (row[10] != null) a.setId(UUID.fromString(row[10].toString())); } catch (Exception e) { }
@@ -139,7 +136,7 @@ public class UserServiceImpl implements UserService {
         if (opt.isPresent()) {
             row = opt.get();
         } else {
-            // fallback: parcourir toutes les lignes et trouver celle avec matching u_id
+
             List<Object[]> rows = userRepository.findAllUsersWithClientAndAdminNative();
             for (Object[] r : rows) {
                 if (r != null && r.length > 0 && r[0] != null && r[0].toString().equals(id.toString())) {

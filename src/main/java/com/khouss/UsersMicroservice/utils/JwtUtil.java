@@ -24,7 +24,8 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
-        // Initialise la clé et la durée d'expiration après injection des valeurs
+
+
         this.key = Keys.hmacShaKeyFor(SECRET.getBytes());
         this.expirationMs = EXPIRATION_TIME;
     }

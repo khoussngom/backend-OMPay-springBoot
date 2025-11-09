@@ -14,7 +14,7 @@ public interface UserService {
 
     User findUserDetailsById(UUID id);
 
-    // new
+
     List<UserFullDto> findAllUsersFull();
     UserFullDto findUserFullById(UUID id);
 }
