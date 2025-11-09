@@ -1,0 +1,61 @@
+package com.khouss.UsersMicroservice.controllers;
+
+import com.khouss.UsersMicroservice.constants.Messages;
+import com.khouss.UsersMicroservice.dtos.UserFullDto;
+import com.khouss.UsersMicroservice.dtos.UserRequest;
+import com.khouss.UsersMicroservice.entities.User;
+import com.khouss.UsersMicroservice.services.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/users")
+public class UserController implements UserApi {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping("/test")
+    public String test() {
+        return Messages.RESPONSE_OK.getText();
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserFullDto>> getAllUsers() {
+        List<UserFullDto> users = userService.findAllUsersFull();
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserFullDto> getUserById(@PathVariable("id") UUID id) {
+        UserFullDto dto = userService.findUserFullById(id);
+        if (dto == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping
+    public ResponseEntity<UserFullDto> createUser(@RequestBody UserRequest userRequest) {
+        User u = new User();
+        u.setUsername(userRequest.getUsername());
+        u.setPassword(userRequest.getPassword());
+        u.setEmail(userRequest.getEmail());
+        u.setPrenom(userRequest.getPrenom());
+        u.setNom(userRequest.getNom());
+        u.setAdresse(userRequest.getAdresse());
+        u.setTelephone(userRequest.getTelephone());
+
+        User saved = userService.saveUser(u);
+        UserFullDto dto = userService.findUserFullById(saved.getId());
+        URI location = URI.create(String.format("/users/%s", saved.getId() == null ? "" : saved.getId().toString()));
+        return ResponseEntity.created(location).body(dto);
+    }
+
+}
