@@ -62,7 +62,7 @@ public class ClientServiceImpl implements ClientService {
             client.setUserId(userIdUuid);
         }
 
-        // utiliser les champs transients fournis dans la requête
+
         client.setEmail(userCreatedEvent.getUser().getEmail());
         client.setPrenom(userCreatedEvent.getUser().getPrenom() != null ? userCreatedEvent.getUser().getPrenom() : "");
         client.setNom(userCreatedEvent.getUser().getNom() != null ? userCreatedEvent.getUser().getNom() : "");

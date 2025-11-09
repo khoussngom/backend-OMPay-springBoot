@@ -27,7 +27,8 @@ public class AccountCreationListener {
             log.warn("UserCreatedEvent sans user valide");
             return;
         }
-        // récupérer le client créé par ClientServiceImpl listener
+
+
         Client client = clientRepository.findByUserId(user.getId());
         UUID clientId = client != null ? client.getId() : null;
         String numero = user.getTelephone();

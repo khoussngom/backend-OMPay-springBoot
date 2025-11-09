@@ -32,7 +32,7 @@ public class CompteServiceImpl implements CompteService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
 
-    // Simulation d'un référentiel de codes marchands valides
+
     private final List<String> codesMarchandsValides = List.of("MRC001", "MRC002");
 
     @Override
@@ -45,7 +45,6 @@ public class CompteServiceImpl implements CompteService {
         return saved;
     }
 
-    // --- Création automatique déclenchée par événement UserCreated ---
     @Override
     public Compte creationAutomatiquePourUser(UUID userId, String numeroTelephone, UUID clientId) {
         String numero = (numeroTelephone == null || numeroTelephone.isBlank()) ? generatePhoneForUser(userId) : numeroTelephone;
@@ -61,12 +60,12 @@ public class CompteServiceImpl implements CompteService {
         return saved;
     }
 
-    // --- Création manuelle pour client existant via endpoint ---
+
     @Override
     public Compte creerComptePourClient(UUID clientId, String numeroTelephone) {
         var client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ClientNotFoundException(OMPayMessages.CLIENT_INEXISTANT.getMessage()));
-        // Vérifier que le numéro appartient au client
+
         if (client.getNumeroTelephone() != null && !client.getNumeroTelephone().equals(numeroTelephone)) {
             throw new NumeroInvalideException(OMPayMessages.NUMERO_INVALIDE.getMessage());
         }
@@ -100,7 +99,7 @@ public class CompteServiceImpl implements CompteService {
         Compte compte = new Compte();
         compte.setNumeroTelephone(numeroTelephone);
         compte.setIdClient(client.getId());
-        compte.setIdUser(user.getId()); // nouveau
+        compte.setIdUser(user.getId());
         compte.setDateOuverture(LocalDate.now());
         Compte saved = compteRepository.save(compte);
         saved.setSolde(BigDecimal.ZERO);
@@ -117,21 +116,21 @@ public class CompteServiceImpl implements CompteService {
         if (client == null) {
             throw new ClientNotFoundException(OMPayMessages.CLIENT_INEXISTANT.getMessage());
         }
-        // Validation ancien numéro (si présent côté client)
+
         if (StringUtils.hasText(client.getNumeroTelephone())) {
             if (!client.getNumeroTelephone().equals(ancienNumero)) {
                 throw new NumeroInvalideException(OMPayMessages.NUMERO_INVALIDE.getMessage());
             }
         }
-        // Déterminer le nouveau numéro (fallback sur l'ancien si absent)
+
         String nouveau = StringUtils.hasText(nouveauNumero) ? nouveauNumero : ancienNumero;
         if (!StringUtils.hasText(nouveau)) {
             throw new IllegalArgumentException("Nouveau numéro manquant");
         }
-        // Vérifier duplication
+
         compteRepository.findByNumeroTelephone(nouveau)
                 .ifPresent(c -> { throw new CompteAlreadyExistsException(OMPayMessages.COMPTE_DEJA_EXISTANT.getMessage()); });
-        // Mettre à jour le client si le numéro change
+
         if (!nouveau.equals(client.getNumeroTelephone())) {
             client.setNumeroTelephone(nouveau);
             clientRepository.save(client);
@@ -147,7 +146,7 @@ public class CompteServiceImpl implements CompteService {
     }
 
     private String generatePhoneForUser(UUID userId) {
-        // Génération simple pseudo aléatoire basée sur l'UUID
+
         return "77" + userId.toString().replaceAll("-", "").substring(0, 7);
     }
 
@@ -315,7 +314,7 @@ public class CompteServiceImpl implements CompteService {
     @Override
     public List<Compte> listerComptes() {
         List<Compte> comptes = compteRepository.findAll();
-        // Calculer le solde pour affichage
+
         return comptes.stream().map(c -> {
             try {
                 c.setSolde(calculerSolde(c.getId()));
