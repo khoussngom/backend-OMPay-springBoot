@@ -6,7 +6,6 @@ WORKDIR /workspace
 
 # Copy only Maven files first for better caching
 COPY pom.xml mvnw ./
-COPY .mvn .mvn
 RUN mkdir -p src && echo "" > src/.keep
 
 # Copy sources
