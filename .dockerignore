@@ -1,0 +1,15 @@
+target/
+.gradle/
+.mvn/
+.git/
+.gitignore
+README-*.md
+*.log
+*.md
+.idea/
+.vscode/
+node_modules/
+**/src/test/
+**/*.iml
+.DS_Store
+

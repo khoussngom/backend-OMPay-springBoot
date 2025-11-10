@@ -5,7 +5,7 @@ FROM maven:3.9.3-eclipse-temurin-17 AS build
 WORKDIR /workspace
 
 # Copy only Maven files first for better caching
-COPY pom.xml mvnw .
+COPY pom.xml mvnw ./
 COPY .mvn .mvn
 RUN mkdir -p src && echo "" > src/.keep
 
