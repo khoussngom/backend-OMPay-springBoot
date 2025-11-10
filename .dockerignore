@@ -1,3 +1,4 @@
+# .dockerignore for UsersMicroservice
 target/
 .gradle/
 .mvn/
@@ -12,4 +13,3 @@ node_modules/
 **/src/test/
 **/*.iml
 .DS_Store
-
