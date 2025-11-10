@@ -18,8 +18,8 @@ import org.hibernate.type.SqlTypes;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false, updatable = false, columnDefinition = "char(36)")
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
     @Column(unique = true, nullable = false)

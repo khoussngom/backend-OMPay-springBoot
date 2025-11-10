@@ -19,8 +19,8 @@ public class Client {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false, updatable = false, columnDefinition = "char(36)")
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
     private String prenom;
     private String nom;
@@ -31,8 +31,8 @@ public class Client {
     @Column(name = "numero_telephone", unique = true)
     private String numeroTelephone;
 
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "user_id", length = 36, columnDefinition = "char(36)")
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "user_id")
     private UUID userId;
 
     @Transient

@@ -5,13 +5,18 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import jakarta.annotation.PostConstruct;
 
 @Component
 public class JwtUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
     @Value("${SECRET_KEY:MarakhibSecretKeyForJwtTokenGeneration2025}")
     private String SECRET;
@@ -24,10 +29,26 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
+        try {
+            if (SECRET == null || SECRET.trim().isEmpty()) {
+                logger.warn("SECRET is empty or not provided — generating random signing key");
+                this.key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+            } else {
+                try {
+                    byte[] keyBytes = SECRET.getBytes(StandardCharsets.UTF_8);
+                    this.key = Keys.hmacShaKeyFor(keyBytes);
+                } catch (Exception e) {
+                    logger.warn("Failed to create HMAC key from SECRET, falling back to generated key", e);
+                    this.key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Unexpected error initializing JwtUtil key, generating fallback key", e);
+            this.key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        }
 
-
-        this.key = Keys.hmacShaKeyFor(SECRET.getBytes());
         this.expirationMs = EXPIRATION_TIME;
+        logger.info("JwtUtil initialized (expirationMs={})", expirationMs);
     }
 
     public String generateToken(String username) {

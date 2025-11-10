@@ -31,7 +31,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             "FROM users u " +
             "LEFT JOIN clients c ON c.user_id = u.id " +
             "LEFT JOIN admins a ON a.user_id = u.id " +
-            "WHERE u.id = :id", nativeQuery = true)
+            // comparaison via CAST en varchar pour éviter mismatch type character vs uuid
+            "WHERE CAST(u.id AS varchar) = CAST(:id AS varchar)", nativeQuery = true)
     Optional<Object[]> findUserWithClientAndAdminById(@Param("id") UUID id);
 
 }

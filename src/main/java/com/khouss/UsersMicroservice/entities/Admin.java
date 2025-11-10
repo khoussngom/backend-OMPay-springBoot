@@ -19,14 +19,14 @@ public class Admin {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false, updatable = false, columnDefinition = "char(36)")
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
     private String prenom;
     private String nom;
 
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "user_id", length = 36, columnDefinition = "char(36)")
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "user_id")
     private UUID userId;
 
     @Transient
