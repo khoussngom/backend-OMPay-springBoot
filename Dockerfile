@@ -36,4 +36,4 @@ ENV SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
 # Recommended ENV placeholders for production DB (Neon)
 # SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} -Dserver.port=${PORT:-8086} -jar /app/app.jar"]
