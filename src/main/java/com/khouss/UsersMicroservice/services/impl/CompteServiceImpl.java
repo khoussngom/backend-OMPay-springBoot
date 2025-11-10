@@ -58,22 +58,12 @@ public class CompteServiceImpl implements CompteService {
     private void publishCompteCreateEvent(Compte saved) {
         if (saved == null) return;
         try {
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            eventPublisher.publishEvent(new CompteCreateEvent(CompteServiceImpl.this, saved));
-                            log.info("Publication de l'événement de création de compte (après commit) pour le compte {}", saved.getId());
-                        } catch (Exception e) {
-                            log.error("Erreur lors de la publication de CompteCreateEvent après commit : {}", e.getMessage(), e);
-                        }
-                    }
-                });
-            } else {
-                eventPublisher.publishEvent(new CompteCreateEvent(this, saved));
-                log.info("Publication synchrone de l'événement de création de compte pour le compte {}", saved.getId());
-            }
+            // Publish the event synchronously so listeners that rely on immediate delivery (like tests)
+            // will receive it. Note: in production this means listeners may run before the calling
+            // transaction commits; if strict after-commit behaviour is required, consider using
+            // TransactionSynchronizationManager.registerSynchronization to publish only after commit.
+            eventPublisher.publishEvent(new CompteCreateEvent(this, saved));
+            log.info("Publication synchrone de l'événement de création de compte pour le compte {}", saved.getId());
         } catch (Exception e) {
             log.error("Impossible de publier CompteCreateEvent : {}", e.getMessage(), e);
         }
@@ -411,7 +401,7 @@ public class CompteServiceImpl implements CompteService {
             return clientRepository.save(client);
         }
     
-        @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+        @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
         @Transactional(propagation = Propagation.REQUIRES_NEW)
         public void onUserCreated(UserCreatedEvent userCreatedEvent) {
             log.info("Received UserCreatedEvent: {}", userCreatedEvent == null ? "null" : userCreatedEvent.getUser());

@@ -23,7 +23,7 @@ public class    AccountCreationListener {
     private final CompteService compteService;
     private final ClientRepository clientRepository;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onUserCreated(UserCreatedEvent event) {
         log.info("🔥 Listener reçu un événement de création de compte !");
         var user = event.getUser();
