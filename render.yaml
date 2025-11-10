@@ -2,21 +2,23 @@ services:
   - type: web
     name: users-microservice
     runtime: docker
+    dockerfilePath: Dockerfile
+    startCommand: ""          # leave empty to use Dockerfile ENTRYPOINT
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://YOUR_DB_HOST:3306/authSprinf?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        value: "jdbc:postgresql://<NEON_HOST>:5432/<DB_NAME>?sslmode=require"
       - key: SPRING_DATASOURCE_USERNAME
-        value: your_db_user
+        value: "<DB_USER>"
       - key: SPRING_DATASOURCE_PASSWORD
-        value: your_db_password
-      - key: SECRET_KEY
-        value: ChangeMeSecretKey
+        value: "<DB_PASSWORD>"
+      - key: SPRING_PROFILES_ACTIVE
+        value: "prod"
+      - key: JWT_SECRET
+        value: "ChangeMeSecretKey"
       - key: EXPIRATION_TIME
         value: "360000"
       - key: SWAGGER_SERVER_URL
-        value: https://users-microservice.onrender.com
-    dockerfilePath: Dockerfile
+        value: "https://users-microservice.onrender.com"
     autoDeploy: true
     healthCheckPath: /v3/api-docs
     plan: free
-
