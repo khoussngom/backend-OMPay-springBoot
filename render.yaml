@@ -18,7 +18,7 @@ services:
       - key: EXPIRATION_TIME
         value: "360000"
       - key: SWAGGER_SERVER_URL
-        value: "https://users-microservice.onrender.com"
+        value: "https://backend-ompay-springboot.onrender.com"
     autoDeploy: true
     healthCheckPath: /v3/api-docs
     plan: free
