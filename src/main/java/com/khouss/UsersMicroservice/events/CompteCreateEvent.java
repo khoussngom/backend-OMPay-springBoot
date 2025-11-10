@@ -7,8 +7,8 @@ public class CompteCreateEvent extends ApplicationEvent {
 
     private final Compte compte;
 
-    public CompteCreateEvent(Compte compte) {
-        super(compte);
+    public CompteCreateEvent(Object source,Compte compte) {
+        super(source);
         this.compte = compte;
     }
 

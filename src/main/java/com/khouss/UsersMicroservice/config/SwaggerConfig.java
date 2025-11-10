@@ -24,7 +24,7 @@ public class SwaggerConfig {
                         .license(new License().name("MIT").url("https://opensource.org/licenses/MIT"))
                 );
 
-        // Optionnel: config serveur Swagger depuis l'ENV SWAGGER_SERVER_URL (utile pour Render)
+
         String serverUrl = System.getenv("SWAGGER_SERVER_URL");
         if (serverUrl != null && !serverUrl.isBlank()) {
             api.addServersItem(new Server().url(serverUrl));

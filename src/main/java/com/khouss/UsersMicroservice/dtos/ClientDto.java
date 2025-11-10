@@ -14,5 +14,6 @@ public class ClientDto {
     private String adresse;
     private String email;
     private String telephone;
+    // numéro de compte (préférer pour envois SMS)
+    private String numeroTelephone;
 }
-

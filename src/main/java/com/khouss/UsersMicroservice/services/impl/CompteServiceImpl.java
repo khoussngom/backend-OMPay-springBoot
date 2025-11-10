@@ -5,6 +5,7 @@ import com.khouss.UsersMicroservice.entities.Client;
 import com.khouss.UsersMicroservice.entities.Compte;
 import com.khouss.UsersMicroservice.entities.Transaction;
 import com.khouss.UsersMicroservice.entities.Transaction.Type;
+import com.khouss.UsersMicroservice.events.CompteCreateEvent;
 import com.khouss.UsersMicroservice.events.UserCreatedEvent;
 import com.khouss.UsersMicroservice.exception.*;
 import com.khouss.UsersMicroservice.repo.CompteRepository;
@@ -19,11 +20,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -43,20 +47,54 @@ public class CompteServiceImpl implements CompteService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
 
+    private final Logger log = LoggerFactory.getLogger(CompteServiceImpl.class);
+
 
     private final List<String> codesMarchandsValides = List.of("MRC001", "MRC002");
 
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
+
+    private void publishCompteCreateEvent(Compte saved) {
+        if (saved == null) return;
+        try {
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            eventPublisher.publishEvent(new CompteCreateEvent(CompteServiceImpl.this, saved));
+                            log.info("Publication de l'événement de création de compte (après commit) pour le compte {}", saved.getId());
+                        } catch (Exception e) {
+                            log.error("Erreur lors de la publication de CompteCreateEvent après commit : {}", e.getMessage(), e);
+                        }
+                    }
+                });
+            } else {
+                eventPublisher.publishEvent(new CompteCreateEvent(this, saved));
+                log.info("Publication synchrone de l'événement de création de compte pour le compte {}", saved.getId());
+            }
+        } catch (Exception e) {
+            log.error("Impossible de publier CompteCreateEvent : {}", e.getMessage(), e);
+        }
+    }
+
     @Override
+    @Transactional
     public Compte creerCompte(Compte compte) {
         compteRepository.findByNumeroTelephone(compte.getNumeroTelephone())
                 .ifPresent(c -> { throw new CompteAlreadyExistsException(OMPayMessages.COMPTE_DEJA_EXISTANT.getMessage()); });
         compte.setDateOuverture(LocalDate.now());
         Compte saved = compteRepository.save(compte);
         saved.setSolde(BigDecimal.ZERO);
+        try {
+            publishCompteCreateEvent(saved);
+        } catch (Exception ignored) {}
         return saved;
     }
 
     @Override
+    @Transactional
     public Compte creationAutomatiquePourUser(UUID userId, String numeroTelephone, UUID clientId) {
         String numero = (numeroTelephone == null || numeroTelephone.isBlank()) ? generatePhoneForUser(userId) : numeroTelephone;
         compteRepository.findByNumeroTelephone(numero)
@@ -64,15 +102,19 @@ public class CompteServiceImpl implements CompteService {
         Compte compte = new Compte();
         compte.setNumeroTelephone(numero);
         compte.setIdClient(clientId);
-        compte.setIdUser(userId); // nouveau
+        compte.setIdUser(userId);
         compte.setDateOuverture(LocalDate.now());
         Compte saved = compteRepository.save(compte);
         saved.setSolde(BigDecimal.ZERO);
+        try {
+            log.info("Publication de l'événement de création de compte pour le compte {}", saved.getId());
+            publishCompteCreateEvent(saved);
+        } catch (Exception ignored) {}
         return saved;
     }
 
-
     @Override
+    @Transactional
     public Compte creerComptePourClient(UUID clientId, String numeroTelephone) {
         var client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ClientNotFoundException(OMPayMessages.CLIENT_INEXISTANT.getMessage()));
@@ -85,14 +127,19 @@ public class CompteServiceImpl implements CompteService {
         Compte compte = new Compte();
         compte.setNumeroTelephone(numeroTelephone);
         compte.setIdClient(clientId);
-        compte.setIdUser(client.getUserId()); // nouveau
+        compte.setIdUser(client.getUserId());
         compte.setDateOuverture(LocalDate.now());
         Compte saved = compteRepository.save(compte);
         saved.setSolde(BigDecimal.ZERO);
+        try {
+            log.info("Publication de l'événement de création de compte pour le compte {}", saved.getId());
+            publishCompteCreateEvent(saved);
+        } catch (Exception ignored) {}
         return saved;
     }
 
     @Override
+    @Transactional
     public Compte creerComptePourUsername(String username, String numeroTelephone) {
         var user = userRepository.findByUsername(username);
         if (user == null || user.getId() == null) {
@@ -114,10 +161,15 @@ public class CompteServiceImpl implements CompteService {
         compte.setDateOuverture(LocalDate.now());
         Compte saved = compteRepository.save(compte);
         saved.setSolde(BigDecimal.ZERO);
+        try {
+            log.info("Publication de l'événement de création de compte pour le compte {}", saved.getId());
+            publishCompteCreateEvent(saved);
+        } catch (Exception ignored) {}
         return saved;
     }
 
     @Override
+    @Transactional
     public Compte creerCompteMajNumeroPourUsername(String username, String ancienNumero, String nouveauNumero) {
         var user = userRepository.findByUsername(username);
         if (user == null || user.getId() == null) {
@@ -153,6 +205,10 @@ public class CompteServiceImpl implements CompteService {
         compte.setDateOuverture(LocalDate.now());
         Compte saved = compteRepository.save(compte);
         saved.setSolde(BigDecimal.ZERO);
+        try {
+            log.info("Publication de l'événement de création de compte pour le compte {}", saved.getId());
+            publishCompteCreateEvent(saved);
+        } catch (Exception ignored) {}
         return saved;
     }
 

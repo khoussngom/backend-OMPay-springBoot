@@ -14,13 +14,15 @@ public class SmsServiceImpl implements SmsService {
 
     private static final Logger log = LoggerFactory.getLogger(SmsServiceImpl.class);
 
-    @Value("${TWILIO_PHONE_NUMBER:}")
+
+    @Value("${TWILIO_PHONE_NUMBER:${TWILIO_FROM:}}")
     private String fromPhoneNumber;
 
     @Value("${TWILIO_ACCOUNT_SID:}")
     private String accountSid;
 
-    @Value("${TWILIO_AUTH_TOKEN:}")
+
+    @Value("${TWILIO_AUTH_TOKEN:${TWILIO_TOKEN:}}")
     private String authToken;
 
     @Override
@@ -30,20 +32,31 @@ public class SmsServiceImpl implements SmsService {
             throw new IllegalArgumentException("Numéro destinataire ou message vide");
         }
         if (!StringUtils.hasText(accountSid) || !StringUtils.hasText(authToken) || !StringUtils.hasText(fromPhoneNumber)) {
-            log.error("Configuration Twilio incomplète");
-            throw new IllegalStateException("Configuration Twilio incomplète");
+
+            log.warn("Configuration Twilio incomplète - SMS non envoyé. accountSid present: {}, authToken present: {}, from present: {}",
+                    StringUtils.hasText(accountSid), StringUtils.hasText(authToken), StringUtils.hasText(fromPhoneNumber));
+            return;
         }
+
+        String normalized = destinataire == null ? "" : destinataire.trim();
+        if (normalized.startsWith("+")) {
+            normalized = normalized.substring(1);
+        }
+        if (!normalized.startsWith("221")) {
+            normalized = "221" + normalized;
+        }
+        normalized = "+" + normalized;
 
         try {
             Twilio.init(accountSid, authToken);
 
             Message sent = Message.creator(
-                    new PhoneNumber(destinataire),
+                    new PhoneNumber(normalized),
                     new PhoneNumber(fromPhoneNumber),
                     text
             ).create();
 
-            log.info("SMS envoyé avec succès à {} | SID : {}", destinataire, sent.getSid());
+            log.info("SMS envoyé avec succès à {} | SID : {}", normalized, sent.getSid());
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi du SMS : {}", e.getMessage(), e);
             throw new RuntimeException("Impossible d'envoyer le SMS", e);

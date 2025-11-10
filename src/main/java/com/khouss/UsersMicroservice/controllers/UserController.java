@@ -12,12 +12,15 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/users")
-public class UserController implements UserApi {
+public class  UserController implements UserApi {
 
     private final UserService userService;
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     public UserController(UserService userService) {
         this.userService = userService;
@@ -53,7 +56,9 @@ public class UserController implements UserApi {
         u.setTelephone(userRequest.getTelephone());
 
         User saved = userService.saveUser(u);
+        log.info("Saved user: id={}, username={}", saved.getId(), saved.getUsername());
         UserFullDto dto = userService.findUserFullById(saved.getId());
+        log.info("UserFullDto returned for id {} : {}", saved.getId(), dto);
         URI location = URI.create(String.format("/users/%s", saved.getId() == null ? "" : saved.getId().toString()));
         return ResponseEntity.created(location).body(dto);
     }

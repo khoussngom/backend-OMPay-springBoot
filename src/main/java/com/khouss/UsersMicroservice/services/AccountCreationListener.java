@@ -8,20 +8,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.UUID;
 
+
 @Component
 @RequiredArgsConstructor
-public class AccountCreationListener {
+public class    AccountCreationListener {
 
     private static final Logger log = LoggerFactory.getLogger(AccountCreationListener.class);
 
     private final CompteService compteService;
     private final ClientRepository clientRepository;
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onUserCreated(UserCreatedEvent event) {
+        log.info("🔥 Listener reçu un événement de création de compte !");
         var user = event.getUser();
         if (user == null || user.getId() == null) {
             log.warn("UserCreatedEvent sans user valide");
@@ -40,4 +44,3 @@ public class AccountCreationListener {
         }
     }
 }
-

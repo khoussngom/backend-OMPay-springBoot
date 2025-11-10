@@ -8,5 +8,9 @@ import java.util.UUID;
 
 public interface CompteRepository extends JpaRepository<Compte, UUID> {
     Optional<Compte> findByNumeroTelephone(String numeroTelephone);
-}
 
+
+    Optional<Compte> findByIdUser(UUID idUser);
+
+    Optional<Compte> findByIdClient(UUID idClient);
+}

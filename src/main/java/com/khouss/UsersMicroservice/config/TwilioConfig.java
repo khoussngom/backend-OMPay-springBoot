@@ -4,7 +4,6 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
-// Twilio import
 import com.twilio.Twilio;
 
 @Configuration
@@ -13,7 +12,7 @@ public class TwilioConfig {
     @Value("${TWILIO_ACCOUNT_SID:}")
     private String accountSid;
 
-    @Value("${TWILIO_AUTH_TOKEN:}")
+    @Value("${TWILIO_AUTH_TOKEN:${TWILIO_TOKEN:}}")
     private String authToken;
 
     @PostConstruct
