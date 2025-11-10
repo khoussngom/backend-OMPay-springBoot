@@ -1,10 +1,15 @@
+# HELP files
 HELP.md
+
+# Maven target
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# Environment variables
 .env
+
 ### STS ###
 .apt_generated
 .classpath
