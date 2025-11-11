@@ -29,8 +29,8 @@ public class AuthController {
 
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestParam String username, @RequestParam String otp) {
-        User u = userService.FindByUsername(username);
+    public ResponseEntity<?> verifyOtp(@RequestParam String telephone, @RequestParam String otp) {
+        User u = userService.FindByTelephone(telephone);
         if (u == null) return ResponseEntity.badRequest().body(Map.of("error","User not found"));
         boolean ok = otpService.validateOtp(u, otp);
         if (!ok) return ResponseEntity.badRequest().body(Map.of("error","Invalid or expired OTP"));
@@ -46,8 +46,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestParam String username, @RequestParam String password) {
-        User u = userService.connexion(username, password);
+    public ResponseEntity<?> login(@RequestParam String telephone, @RequestParam String password) {
+        User u = userService.connexion(telephone, password);
         if (u == null) return ResponseEntity.status(401).body(Map.of("error","Invalid credentials"));
         if (Boolean.FALSE.equals(u.getEnabled())) return ResponseEntity.status(403).body(Map.of("error","Account not verified. Please verify OTP."));
         String token = jwtUtil.generateToken(u.getUsername(), u.getRole());

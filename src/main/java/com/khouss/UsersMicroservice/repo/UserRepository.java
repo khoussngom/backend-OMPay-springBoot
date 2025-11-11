@@ -13,6 +13,7 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
     User findByUsername(String username);
+    User findByTelephone(String telephone);
 
     boolean existsByUsername(String username);
 

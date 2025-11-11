@@ -199,8 +199,11 @@ public class UserServiceImpl implements UserService {
         return jwt.getIssuerUri() + "/" + username + "/" + role;
     }
 
-    public User connexion(String username, String password) {
-        User user = userRepository.findByUsername(username);
+    @Override
+    public User connexion(String telephone, String password) {
+        String normalizedTelephone = PhoneNumberUtils.normalizeToSenegalFormat(telephone);
+        if (normalizedTelephone == null) return null;
+        User user = userRepository.findByTelephone(normalizedTelephone);
         if (user != null && bCryptPasswordEncoder.matches(password, user.getPassword())) {
             return user;
         }
@@ -214,7 +217,7 @@ public class UserServiceImpl implements UserService {
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
             throw new IllegalArgumentException(Messages.PASSWORD_EMPTY.getText());
         }
-        if(userRepository.existsByUsername(user.getUsername())) {
+        if (user.getId() == null && userRepository.existsByUsername(user.getUsername())) {
             throw new IllegalArgumentException(Messages.USERNAME_EXISTS.getText());
         }
 
@@ -276,6 +279,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public User FindByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    @Override
+    public User FindByTelephone(String telephone) {
+        String normalizedTelephone = PhoneNumberUtils.normalizeToSenegalFormat(telephone);
+        if (normalizedTelephone == null) return null;
+        return userRepository.findByTelephone(normalizedTelephone);
     }
 
 
