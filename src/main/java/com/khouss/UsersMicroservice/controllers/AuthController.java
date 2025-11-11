@@ -27,22 +27,6 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody UserRequest req) {
-        User u = new User();
-        BeanUtils.copyProperties(req, u);
-        try {
-            User saved = userService.saveUser(u);
-            UserResponse resp = new UserResponse();
-            BeanUtils.copyProperties(saved, resp);
-            Map<String, Object> body = new HashMap<>();
-            body.put("user", resp);
-            body.put("message", "User created. OTP sent to phone if configured.");
-            return ResponseEntity.ok(body);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Failed to create user: " + e.getMessage()));
-        }
-    }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestParam String username, @RequestParam String otp) {

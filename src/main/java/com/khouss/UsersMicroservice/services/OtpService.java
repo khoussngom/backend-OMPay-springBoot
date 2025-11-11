@@ -5,6 +5,7 @@ import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
 import com.khouss.UsersMicroservice.repo.UserRepository;
 import com.khouss.UsersMicroservice.entities.User;
+import com.khouss.UsersMicroservice.utils.PhoneNumberUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -42,8 +43,13 @@ public class OtpService {
         }
 
         Twilio.init(accountSid, authToken);
+        String normalizedPhone = PhoneNumberUtils.normalizeToSenegalFormat(user.getTelephone());
+        if (normalizedPhone == null) {
+            throw new Exception("Invalid phone number: " + user.getTelephone());
+        }
         String body = "Votre code OTP: " + otp + " (valide 5 minutes)";
-        Message message = Message.creator(new PhoneNumber(user.getTelephone()), new PhoneNumber(fromNumber), body).create();
+        Message message = Message.creator(new PhoneNumber(normalizedPhone), new PhoneNumber(fromNumber), body).create();
+        System.out.println("SMS sent to " + normalizedPhone + " with SID: " + message.getSid());
         return otp;
     }
 
