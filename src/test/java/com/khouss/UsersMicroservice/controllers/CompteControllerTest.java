@@ -47,9 +47,10 @@ class CompteControllerTest {
         // Arrange
         CompteCreationRequest req = new CompteCreationRequest();
         req.setUsername("khoussngom");
-        req.setNumeroTelephone("774730039");
+        req.setAncienNumeroTelephone("774730038");
+        req.setNouveauNumeroTelephone("774730039");
 
-        when(compteService.creerComptePourUsername(anyString(), anyString()))
+        when(compteService.creerCompteMajNumeroPourUsername(anyString(), anyString(), anyString()))
                 .thenThrow(new ClientNotFoundException(OMPayMessages.CLIENT_INEXISTANT.getMessage()));
 
         // Act & Assert
