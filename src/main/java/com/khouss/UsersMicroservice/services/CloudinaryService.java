@@ -27,10 +27,16 @@ public class CloudinaryService {
         log.info("  - api_key={}", apiKey == null || apiKey.isEmpty() ? "EMPTY" : "***");
         log.info("  - api_secret={}", apiSecret == null || apiSecret.isEmpty() ? "EMPTY" : "***");
 
+        if (cloudName == null || cloudName.isEmpty() ||
+            apiKey == null || apiKey.isEmpty() ||
+            apiSecret == null || apiSecret.isEmpty()) {
+            throw new IllegalArgumentException("Cloudinary credentials are not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
+        }
+
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
-                "cloud_name", cloudName != null ? cloudName : "",
-                "api_key", apiKey != null ? apiKey : "",
-                "api_secret", apiSecret != null ? apiSecret : ""
+                "cloud_name", cloudName,
+                "api_key", apiKey,
+                "api_secret", apiSecret
         ));
         log.info("✅ CloudinaryService initialized");
     }

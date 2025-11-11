@@ -35,9 +35,7 @@ public class SmsServiceImpl implements SmsService {
         }
         if (!StringUtils.hasText(accountSid) || !StringUtils.hasText(authToken) || !StringUtils.hasText(fromPhoneNumber)) {
 
-            log.warn("Configuration Twilio incomplète - SMS non envoyé. accountSid present: {}, authToken present: {}, from present: {}",
-                    StringUtils.hasText(accountSid), StringUtils.hasText(authToken), StringUtils.hasText(fromPhoneNumber));
-            return;
+            throw new IllegalArgumentException("Configuration Twilio incomplète. Veuillez définir TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN et TWILIO_FROM.");
         }
 
         String normalized = destinataire == null ? "" : destinataire.trim();
