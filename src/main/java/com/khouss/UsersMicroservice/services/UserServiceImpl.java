@@ -80,6 +80,7 @@ public class UserServiceImpl implements UserService {
             dto.setId(u.getId());
             dto.setUsername(u.getUsername());
             dto.setEnabled(u.getEnabled());
+            dto.setQrCodeUrl(u.getQrCodeUrl());
 
             Client client = clientRepository.findByUserId(u.getId());
             ClientDto c = null;
@@ -146,6 +147,7 @@ public class UserServiceImpl implements UserService {
         dto.setId(u.getId());
         dto.setUsername(u.getUsername());
         dto.setEnabled(u.getEnabled());
+        dto.setQrCodeUrl(u.getQrCodeUrl());
 
         Client client = clientRepository.findByUserId(u.getId());
         ClientDto c = null;
@@ -207,7 +209,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public User saveUser(User user) {
+    public User saveUser(User user) throws Exception {
 
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
             throw new IllegalArgumentException(Messages.PASSWORD_EMPTY.getText());
@@ -241,26 +243,22 @@ public class UserServiceImpl implements UserService {
         }
 
         // Generate QR code for the telephone if present
-        try {
-            String qrText = (saved.getTelephone() != null) ? saved.getTelephone() : saved.getUsername();
-            log.info("🔵 Generating QR for text='{}' userId={}", qrText, saved.getId());
-            byte[] png = qrCodeService.generateQrCodePng(qrText, 250, 250);
-            log.info("✅ QR code PNG generated: {} bytes", png != null ? png.length : 0);
+        String qrText = (saved.getTelephone() != null) ? saved.getTelephone() : saved.getUsername();
+        log.info("🔵 Generating QR for text='{}' userId={}", qrText, saved.getId());
+        byte[] png = qrCodeService.generateQrCodePng(qrText, 250, 250);
+        log.info("✅ QR code PNG generated: {} bytes", png != null ? png.length : 0);
 
-            String publicId = "qr_" + saved.getId();
-            log.info("🔵 Uploading to Cloudinary with publicId={}", publicId);
-            String url = cloudinaryService.uploadImage(png, publicId);
-            log.info("✅ Cloudinary response: url={}", url);
+        String publicId = "qr_" + saved.getId();
+        log.info("🔵 Uploading to Cloudinary with publicId={}", publicId);
+        String url = cloudinaryService.uploadImage(png, publicId);
+        log.info("✅ Cloudinary response: url={}", url);
 
-            if (url != null && !url.isEmpty()) {
-                saved.setQrCodeUrl(url);
-                saved = userRepository.save(saved);
-                log.info("✅ QR code URL saved to user: {}", url);
-            } else {
-                log.warn("⚠️ Cloudinary returned empty/null URL for user {} and publicId {}", saved.getId(), publicId);
-            }
-        } catch (Exception e) {
-            log.error("❌ Failed to generate/upload QR code for user {}: {}", saved.getId(), e.getMessage(), e);
+        if (url != null && !url.isEmpty()) {
+            saved.setQrCodeUrl(url);
+            saved = userRepository.save(saved);
+            log.info("✅ QR code URL saved to user: {}", url);
+        } else {
+            log.warn("⚠️ Cloudinary returned empty/null URL for user {} and publicId {}", saved.getId(), publicId);
         }
 
         // Generate OTP and send via Twilio

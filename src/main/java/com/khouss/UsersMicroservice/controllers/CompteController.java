@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -50,6 +51,7 @@ public class CompteController {
     }
 
     @PostMapping("/{id}/depot")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> depot(@PathVariable("id") UUID id, @RequestParam BigDecimal montant) {
         Compte compte = compteService.deposer(id, montant);
         return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.DEPOT_SUCCES));
@@ -57,8 +59,9 @@ public class CompteController {
 
     @PostMapping("/depot")
     @Operation(summary = "Dépôt par numéro", description = "Effectue un dépôt sur un compte via son numéro de téléphone")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> depotParNumero(@RequestParam("numeroTelephone") String numeroTelephone,
-                                                              @RequestParam BigDecimal montant) {
+                                                               @RequestParam BigDecimal montant) {
         Compte compte = compteService.deposerParNumero(numeroTelephone, montant);
         return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.DEPOT_SUCCES));
     }

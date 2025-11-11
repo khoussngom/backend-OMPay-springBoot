@@ -31,13 +31,17 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody UserRequest req) {
         User u = new User();
         BeanUtils.copyProperties(req, u);
-        User saved = userService.saveUser(u);
-        UserResponse resp = new UserResponse();
-        BeanUtils.copyProperties(saved, resp);
-        Map<String, Object> body = new HashMap<>();
-        body.put("user", resp);
-        body.put("message", "User created. OTP sent to phone if configured.");
-        return ResponseEntity.ok(body);
+        try {
+            User saved = userService.saveUser(u);
+            UserResponse resp = new UserResponse();
+            BeanUtils.copyProperties(saved, resp);
+            Map<String, Object> body = new HashMap<>();
+            body.put("user", resp);
+            body.put("message", "User created. OTP sent to phone if configured.");
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to create user: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/verify-otp")
@@ -48,7 +52,11 @@ public class AuthController {
         if (!ok) return ResponseEntity.badRequest().body(Map.of("error","Invalid or expired OTP"));
         // enable user and generate jwt
         u.setEnabled(true);
-        userService.saveUser(u);
+        try {
+            userService.saveUser(u);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to enable user: " + e.getMessage()));
+        }
         String token = jwtUtil.generateToken(u.getUsername(), u.getRole());
         return ResponseEntity.ok(Map.of("token", token));
     }

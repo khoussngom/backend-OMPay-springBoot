@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Base64;
 import java.util.Map;
 
 @Service
@@ -47,19 +48,15 @@ public class CloudinaryService {
             throw new Exception("Image data is null or empty");
         }
 
-        try (InputStream is = new ByteArrayInputStream(data)) {
-            log.info("🔵 Uploading image: {} bytes with publicId={}", data.length, publicId);
-            Map uploadResult = cloudinary.uploader().upload(is, ObjectUtils.asMap(
-                    "public_id", publicId,
-                    "overwrite", true,
-                    "resource_type", "image"
-            ));
-            String url = (String) uploadResult.get("secure_url");
-            log.info("✅ Upload successful: {}", url);
-            return url;
-        } catch (Exception e) {
-            log.error("❌ Cloudinary upload failed: {}", e.getMessage(), e);
-            throw new Exception("Cloudinary upload failed", e);
-        }
+        String dataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(data);
+        log.info("🔵 Uploading image: {} bytes with publicId={}", data.length, publicId);
+        Map uploadResult = cloudinary.uploader().upload(dataUrl, ObjectUtils.asMap(
+                "public_id", publicId,
+                "overwrite", true,
+                "resource_type", "image"
+        ));
+        String url = (String) uploadResult.get("secure_url");
+        log.info("✅ Upload successful: {}", url);
+        return url;
     }
 }

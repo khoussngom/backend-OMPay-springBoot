@@ -2,10 +2,12 @@ package com.khouss.UsersMicroservice.services;
 
 import com.khouss.UsersMicroservice.events.CompteCreateEvent;
 import com.khouss.UsersMicroservice.repo.CompteRepository;
+import com.khouss.UsersMicroservice.repo.UserRepository;
 import com.khouss.UsersMicroservice.utils.PhoneNumberUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +24,11 @@ public class EnvoieSmsListener {
     private final SmsService smsService;
     private final CompteRepository compteRepository;
 
-    private String genererCodeOtp() {
-        int code = (int) (Math.random() * 900000) + 100000;
-        return String.valueOf(code);
-    }
+    @Autowired
+    private OtpService otpService;
+
+    @Autowired
+    private UserRepository userRepository;
 
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
@@ -83,15 +86,17 @@ public class EnvoieSmsListener {
             }
         }
 
-        String codeOtp = genererCodeOtp();
-        String message = String.format("Bonjour, votre code OTP est %s. Votre compte a été créé avec succès.", codeOtp);
-
+        // Envoyer OTP via le service OTP (valide 5 minutes)
         try {
-            logger.info("🔵 Envoi SMS à {} avec message: {}", normalized, message);
-            smsService.sendSMS(normalized, message);
-            logger.info("✅ SMS envoyé au {} pour le compte {}", normalized, compte.getId());
+            var user = userRepository.findById(compte.getIdUser()).orElse(null);
+            if (user != null) {
+                otpService.generateAndSendOtp(user);
+                logger.info("✅ OTP envoyé pour la création du compte {}", compte.getId());
+            } else {
+                logger.warn("⚠️ Utilisateur non trouvé pour le compte {}", compte.getId());
+            }
         } catch (Exception e) {
-            logger.error("❌ Échec envoi SMS pour le compte {}: {}", compte.getId(), e.getMessage(), e);
+            logger.error("❌ Échec envoi OTP pour le compte {}: {}", compte.getId(), e.getMessage(), e);
         }
     }
 }

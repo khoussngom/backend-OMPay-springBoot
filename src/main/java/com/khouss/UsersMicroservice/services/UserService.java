@@ -9,7 +9,7 @@ import java.util.UUID;
 public interface UserService {
 
     List<User> findAllUser();
-    User saveUser(User user);
+    User saveUser(User user) throws Exception;
     User FindByUsername(String username);
 
     User findUserDetailsById(UUID id);

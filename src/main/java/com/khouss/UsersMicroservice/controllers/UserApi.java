@@ -32,5 +32,5 @@ public interface UserApi {
             summary = "Créer un nouvel utilisateur",
             description = "Ajoute un utilisateur dans la base de données {username, password}."
     )
-    ResponseEntity<UserFullDto> createUser(@RequestBody UserRequest userRequest);
+    ResponseEntity<?> createUser(@RequestBody UserRequest userRequest);
 }

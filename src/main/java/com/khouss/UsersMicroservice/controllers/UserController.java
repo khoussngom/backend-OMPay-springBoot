@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -45,7 +46,7 @@ public class  UserController implements UserApi {
     }
 
     @PostMapping
-    public ResponseEntity<UserFullDto> createUser(@RequestBody UserRequest userRequest) {
+    public ResponseEntity<?> createUser(@RequestBody UserRequest userRequest) {
         User u = new User();
         u.setUsername(userRequest.getUsername());
         u.setPassword(userRequest.getPassword());
@@ -55,12 +56,17 @@ public class  UserController implements UserApi {
         u.setAdresse(userRequest.getAdresse());
         u.setTelephone(userRequest.getTelephone());
 
-        User saved = userService.saveUser(u);
-        log.info("Saved user: id={}, username={}", saved.getId(), saved.getUsername());
-        UserFullDto dto = userService.findUserFullById(saved.getId());
-        log.info("UserFullDto returned for id {} : {}", saved.getId(), dto);
-        URI location = URI.create(String.format("/users/%s", saved.getId() == null ? "" : saved.getId().toString()));
-        return ResponseEntity.created(location).body(dto);
+        try {
+            User saved = userService.saveUser(u);
+            log.info("Saved user: id={}, username={}", saved.getId(), saved.getUsername());
+            UserFullDto dto = userService.findUserFullById(saved.getId());
+            log.info("UserFullDto returned for id {} : {}", saved.getId(), dto);
+            URI location = URI.create(String.format("/users/%s", saved.getId() == null ? "" : saved.getId().toString()));
+            return ResponseEntity.created(location).body(dto);
+        } catch (Exception e) {
+            log.error("Failed to create user: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to create user: " + e.getMessage()));
+        }
     }
 
 }

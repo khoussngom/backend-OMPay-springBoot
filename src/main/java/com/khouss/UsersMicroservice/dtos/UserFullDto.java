@@ -11,6 +11,7 @@ public class UserFullDto {
     private UUID id;
     private String username;
     private Boolean enabled;
+    private String qrCodeUrl;
 
     private ClientDto client;
     private AdminDto admin;
