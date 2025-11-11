@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/users").permitAll()
                 .requestMatchers(HttpMethod.GET, "/users", "/users/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/comptes").permitAll()
-                .requestMatchers(HttpMethod.POST, "/comptes", "/comptes/depot", "/comptes/transfert", "/comptes/paiement", "/comptes/client/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/comptes", "/comptes/transfert", "/comptes/paiement", "/comptes/client/**").permitAll()
                 .anyRequest().authenticated()
             );
 

@@ -149,7 +149,7 @@ public class UserServiceImpl implements UserService {
         dto.setEnabled(u.getEnabled());
         dto.setQrCodeUrl(u.getQrCodeUrl());
 
-        Client client = clientRepository.findByUserId(u.getId());
+        Client client = clientRepository.findAllByUserId(u.getId()).stream().findFirst().orElse(null);
         ClientDto c = null;
         if (client != null) {
             c = new ClientDto();

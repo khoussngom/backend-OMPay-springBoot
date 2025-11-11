@@ -15,6 +15,7 @@ import com.khouss.UsersMicroservice.repo.UserRepository;
 import com.khouss.UsersMicroservice.services.ClientService;
 import com.khouss.UsersMicroservice.services.CompteService;
 import com.khouss.UsersMicroservice.services.SmsService;
+import com.khouss.UsersMicroservice.utils.PhoneNumberUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,10 +59,7 @@ public class CompteServiceImpl implements CompteService {
     private void publishCompteCreateEvent(Compte saved) {
         if (saved == null) return;
         try {
-            // Publish the event synchronously so listeners that rely on immediate delivery (like tests)
-            // will receive it. Note: in production this means listeners may run before the calling
-            // transaction commits; if strict after-commit behaviour is required, consider using
-            // TransactionSynchronizationManager.registerSynchronization to publish only after commit.
+     
             eventPublisher.publishEvent(new CompteCreateEvent(this, saved));
             log.info("Publication synchrone de l'événement de création de compte pour le compte {}", saved.getId());
         } catch (Exception e) {
@@ -86,7 +84,8 @@ public class CompteServiceImpl implements CompteService {
     @Override
     @Transactional
     public Compte creationAutomatiquePourUser(UUID userId, String numeroTelephone, UUID clientId) {
-        String numero = (numeroTelephone == null || numeroTelephone.isBlank()) ? generatePhoneForUser(userId) : numeroTelephone;
+        String numero = (numeroTelephone == null || numeroTelephone.isBlank()) ? generatePhoneForUser(userId) : PhoneNumberUtils.normalizeToSenegalFormat(numeroTelephone);
+        if (numero == null) numero = generatePhoneForUser(userId);
         compteRepository.findByNumeroTelephone(numero)
                 .ifPresent(c -> { throw new CompteAlreadyExistsException(OMPayMessages.COMPTE_DEJA_EXISTANT.getMessage()); });
         Compte compte = new Compte();
@@ -230,8 +229,21 @@ public class CompteServiceImpl implements CompteService {
         if (montant == null || montant.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Montant invalide");
         }
-        Compte compte = compteRepository.findByNumeroTelephone(numeroTelephone)
-                .orElseThrow(() -> new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage()));
+        String normalizedNumero = PhoneNumberUtils.normalizeToSenegalFormat(numeroTelephone);
+        String toSearch = normalizedNumero != null ? normalizedNumero : numeroTelephone;
+        var opt = compteRepository.findByNumeroTelephone(toSearch);
+        if (opt.isEmpty() && normalizedNumero != null) {
+            // Try the last 9 digits in case the account was stored without +221
+            String digits = numeroTelephone.replaceAll("\\D", "");
+            String last9 = digits.length() <= 9 ? digits : digits.substring(digits.length() - 9);
+            opt = compteRepository.findByNumeroTelephone(last9);
+            if (opt.isEmpty()) {
+                // Try with 00 instead of +
+                String with00 = "00" + normalizedNumero.substring(1);
+                opt = compteRepository.findByNumeroTelephone(with00);
+            }
+        }
+        Compte compte = opt.orElseThrow(() -> new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage()));
         Transaction tx = new Transaction();
         tx.setCompte(compte);
         tx.setCompteId(compte.getId());
@@ -242,7 +254,6 @@ public class CompteServiceImpl implements CompteService {
         compte.setSolde(calculerSolde(compte.getId()));
         return compte;
     }
-
     @Override
     public Compte transfert(UUID compteSource, UUID compteDest, BigDecimal montant) {
         if (compteSource.equals(compteDest)) {
@@ -294,12 +305,17 @@ public class CompteServiceImpl implements CompteService {
 
     @Override
     public Compte transfertParNumero(String sourceNumero, String destNumero, BigDecimal montant) {
-        if (sourceNumero.equals(destNumero)) {
+        String normalizedSource = PhoneNumberUtils.normalizeToSenegalFormat(sourceNumero);
+        String normalizedDest = PhoneNumberUtils.normalizeToSenegalFormat(destNumero);
+        if (normalizedSource == null || normalizedDest == null) {
+            throw new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage());
+        }
+        if (normalizedSource.equals(normalizedDest)) {
             throw new IllegalArgumentException("Compte source et destinataire identiques");
         }
-        Compte source = compteRepository.findByNumeroTelephone(sourceNumero)
+        Compte source = compteRepository.findByNumeroTelephone(normalizedSource)
                 .orElseThrow(() -> new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage()));
-        Compte dest = compteRepository.findByNumeroTelephone(destNumero)
+        Compte dest = compteRepository.findByNumeroTelephone(normalizedDest)
                 .orElseThrow(() -> new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage()));
         BigDecimal soldeSource = calculerSolde(source.getId());
         if (soldeSource.compareTo(montant) < 0) {
@@ -319,7 +335,11 @@ public class CompteServiceImpl implements CompteService {
 
     @Override
     public Compte paiementParNumero(String numeroTelephone, String codeMarchand, BigDecimal montant) {
-        Compte compte = compteRepository.findByNumeroTelephone(numeroTelephone)
+        String normalizedNumero = PhoneNumberUtils.normalizeToSenegalFormat(numeroTelephone);
+        if (normalizedNumero == null) {
+            throw new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage());
+        }
+        Compte compte = compteRepository.findByNumeroTelephone(normalizedNumero)
                 .orElseThrow(() -> new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage()));
         if (!codesMarchandsValides.contains(codeMarchand)) {
             throw new CodeMarchandNotFoundException(OMPayMessages.CODE_MARCHAND_INEXISTANT.getMessage());
@@ -381,13 +401,16 @@ public class CompteServiceImpl implements CompteService {
     }
 
     @Service
-    public static class ClientServiceImpl implements ClientService {
-    
+    public class ClientServiceImpl implements ClientService {
+
         private static final Logger log = LoggerFactory.getLogger(ClientServiceImpl.class);
-    
-    
+
+
         @Autowired
         ClientRepository clientRepository;
+
+        @Autowired
+        CompteRepository compteRepository;
     
     
     
@@ -409,12 +432,12 @@ public class CompteServiceImpl implements CompteService {
                 log.warn("UserCreatedEvent or user is null, skipping client creation");
                 return;
             }
-    
+
             Client client = new Client();
-    
+
             Object idObj = userCreatedEvent.getUser().getId();
+            UUID userIdUuid = null;
             if (idObj != null) {
-                UUID userIdUuid = null;
                 if (idObj instanceof UUID) {
                     userIdUuid = (UUID) idObj;
                 } else {
@@ -426,17 +449,35 @@ public class CompteServiceImpl implements CompteService {
                 }
                 client.setUserId(userIdUuid);
             }
-    
-    
+
+
             client.setEmail(userCreatedEvent.getUser().getEmail());
             client.setPrenom(userCreatedEvent.getUser().getPrenom() != null ? userCreatedEvent.getUser().getPrenom() : "");
             client.setNom(userCreatedEvent.getUser().getNom() != null ? userCreatedEvent.getUser().getNom() : "");
             client.setAdresse(userCreatedEvent.getUser().getAdresse() != null ? userCreatedEvent.getUser().getAdresse() : "");
-            client.setTelephone(userCreatedEvent.getUser().getTelephone() != null ? userCreatedEvent.getUser().getTelephone() : "");
-    
+            String telephone = userCreatedEvent.getUser().getTelephone() != null ? userCreatedEvent.getUser().getTelephone() : "";
+            client.setTelephone(telephone);
+
             try {
                 Client saved = clientRepository.save(client);
                 log.info("Client created for userId={} with clientId={}", client.getUserId(), saved.getId());
+
+                // Create compte if telephone is provided
+                if (!telephone.isEmpty() && userIdUuid != null) {
+                    try {
+                        Compte compte = new Compte();
+                        compte.setNumeroTelephone(telephone);
+                        compte.setIdClient(saved.getId());
+                        compte.setIdUser(userIdUuid);
+                        compte.setDateOuverture(LocalDate.now());
+                        Compte savedCompte = compteRepository.save(compte);
+                        savedCompte.setSolde(BigDecimal.ZERO);
+                        compteRepository.save(savedCompte);
+                        log.info("Compte created for clientId={} with compteId={}", saved.getId(), savedCompte.getId());
+                    } catch (Exception e) {
+                        log.error("Failed to create Compte for clientId={}: {}", saved.getId(), e.getMessage(), e);
+                    }
+                }
             } catch (Exception e) {
                 log.error("Failed to save Client for userId={}: {}", client.getUserId(), e.getMessage(), e);
             }

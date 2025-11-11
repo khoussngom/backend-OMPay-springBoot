@@ -4,12 +4,15 @@ import com.khouss.UsersMicroservice.constant.OMPayMessages;
 import com.khouss.UsersMicroservice.constant.OMPayResponse;
 import com.khouss.UsersMicroservice.entities.Compte;
 import com.khouss.UsersMicroservice.services.CompteService;
+import com.khouss.UsersMicroservice.services.UserService;
 import com.khouss.UsersMicroservice.dtos.CompteCreationRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -24,6 +27,7 @@ import java.util.UUID;
 public class CompteController {
 
     private final CompteService compteService;
+    private final UserService userService;
 
     @GetMapping
     @Operation(summary = "Lister les comptes", description = "Retourne la liste de tous les comptes avec leur solde courant")
@@ -33,29 +37,27 @@ public class CompteController {
     }
 
     @PostMapping
+    @Operation(summary = "Ajouter un numéro à un client", description = "Change le numéro de téléphone d'un client et crée un compte avec le nouveau numéro")
     public ResponseEntity<Map<String, Object>> creerCompte(@RequestBody CompteCreationRequest request) {
 
         String ancien = request.getAncienNumeroTelephone();
         String nouveau = request.getNouveauNumeroTelephone();
-        if ((ancien == null && nouveau == null) && request.getNumeroTelephone() != null) {
-            nouveau = request.getNumeroTelephone();
-        }
-        Compte created;
-        if (nouveau != null) {
-            created = compteService.creerCompteMajNumeroPourUsername(request.getUsername(), ancien, nouveau);
-        } else {
+        String username = request.getUsername();
 
-            created = compteService.creerComptePourUsername(request.getUsername(), request.getNumeroTelephone());
+        if (ancien == null || nouveau == null || username == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "ancienNumeroTelephone, nouveauNumeroTelephone, and username are required"));
         }
+
+        Compte created = compteService.creerCompteMajNumeroPourUsername(username, ancien, nouveau);
         return ResponseEntity.ok(OMPayResponse.success(created, OMPayMessages.COMPTE_CREE_SUCCES));
     }
 
-    @PostMapping("/{id}/depot")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> depot(@PathVariable("id") UUID id, @RequestParam BigDecimal montant) {
-        Compte compte = compteService.deposer(id, montant);
-        return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.DEPOT_SUCCES));
-    }
+    // @PostMapping("/{id}/depot")
+    // @PreAuthorize("hasRole('ADMIN')")
+    // public ResponseEntity<Map<String, Object>> depot(@PathVariable("id") UUID id, @RequestParam BigDecimal montant) {
+    //     Compte compte = compteService.deposer(id, montant);
+    //     return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.DEPOT_SUCCES));
+    // }
 
     @PostMapping("/depot")
     @Operation(summary = "Dépôt par numéro", description = "Effectue un dépôt sur un compte via son numéro de téléphone")
@@ -75,29 +77,64 @@ public class CompteController {
         return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.TRANSFERT_SUCCES));
     }
 
-    @PostMapping("/{id}/paiement")
-    public ResponseEntity<Map<String, Object>> paiement(@PathVariable("id") UUID compteId,
-                                                         @RequestParam("codeMarchand") String codeMarchand,
-                                                         @RequestParam BigDecimal montant) {
-        Compte compte = compteService.paiement(compteId, codeMarchand, montant);
-        return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.PAIEMENT_SUCCES));
-    }
+    // @PostMapping("/{id}/paiement")
+    // public ResponseEntity<Map<String, Object>> paiement(@PathVariable("id") UUID compteId,
+    //                                                      @RequestParam("codeMarchand") String codeMarchand,
+    //                                                      @RequestParam BigDecimal montant) {
+    //     Compte compte = compteService.paiement(compteId, codeMarchand, montant);
+    //     return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.PAIEMENT_SUCCES));
+    // }
 
     @PostMapping("/paiement")
-    @Operation(summary = "Paiement par numéro", description = "Effectue un paiement marchand à partir d'un numéro de compte")
-    public ResponseEntity<Map<String, Object>> paiementParNumero(@RequestParam("numeroTelephone") String numeroTelephone,
-                                                                  @RequestParam("codeMarchand") String codeMarchand,
-                                                                  @RequestParam BigDecimal montant) {
-        Compte compte = compteService.paiementParNumero(numeroTelephone, codeMarchand, montant);
-        return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.PAIEMENT_SUCCES));
+    @Operation(summary = "Paiement marchand", description = "Effectue un paiement marchand avec le numéro du compte connecté")
+    public ResponseEntity<Map<String, Object>> paiement(@RequestParam("codeMarchand") String codeMarchand,
+                                                        @RequestParam BigDecimal montant) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        var user = userService.FindByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+        // Find the compte for the user
+        var comptes = compteService.listerComptes().stream()
+                .filter(c -> c.getIdUser() != null && c.getIdUser().equals(user.getId()))
+                .toList();
+        if (comptes.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Compte not found"));
+        }
+        Compte compte = comptes.get(0);
+        String numeroTelephone = compte.getNumeroTelephone();
+        Compte updated = compteService.paiementParNumero(numeroTelephone, codeMarchand, montant);
+        return ResponseEntity.ok(OMPayResponse.success(updated, OMPayMessages.PAIEMENT_SUCCES));
     }
 
-    @Deprecated
-    @PostMapping("/{id}/transfert")
-    public ResponseEntity<Map<String, Object>> transfert(@PathVariable("id") UUID sourceId,
-                                                          @RequestParam("dest") UUID destId,
-                                                          @RequestParam BigDecimal montant) {
-        Compte compte = compteService.transfert(sourceId, destId, montant);
-        return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.TRANSFERT_SUCCES));
+    // @Deprecated
+    // @PostMapping("/{id}/transfert")
+    // public ResponseEntity<Map<String, Object>> transfert(@PathVariable("id") UUID sourceId,
+    //                                                        @RequestParam("dest") UUID destId,
+    //                                                        @RequestParam BigDecimal montant) {
+    //     Compte compte = compteService.transfert(sourceId, destId, montant);
+    //     return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.TRANSFERT_SUCCES));
+    // }
+
+    @GetMapping("/solde")
+    @Operation(summary = "Consulter le solde du compte", description = "Retourne le solde du compte de l'utilisateur connecté")
+    public ResponseEntity<Map<String, Object>> getSolde() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        var user = userService.FindByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+        // Assuming one compte per user
+        var comptes = compteService.listerComptes().stream()
+                .filter(c -> c.getIdUser() != null && c.getIdUser().equals(user.getId()))
+                .toList();
+        if (comptes.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Compte not found"));
+        }
+        Compte compte = comptes.get(0);
+        BigDecimal solde = compte.getSolde() != null ? compte.getSolde() : BigDecimal.ZERO;
+        return ResponseEntity.ok(OMPayResponse.success(Map.of("solde", solde), OMPayMessages.LISTE_COMPTES));
     }
 }
