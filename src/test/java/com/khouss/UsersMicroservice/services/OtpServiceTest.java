@@ -18,7 +18,7 @@ public class OtpServiceTest {
 
         User u = new User();
         u.setUsername("testu");
-        u.setTelephone("+221700000000");
+        u.setTelephone("+221774730039");
 
         Mockito.when(repo.save(Mockito.any())).thenAnswer(i -> i.getArgument(0));
 

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.khouss.UsersMicroservice.utils.PhoneNumberUtils;
 
 @Service
 @Transactional
@@ -225,16 +226,41 @@ public class UserServiceImpl implements UserService {
 
         log.info("User saved with id={}", saved.getId());
 
+        // Normalize phone number (to +221...) and save normalized version if needed
+        try {
+            if (saved.getTelephone() != null) {
+                String normalizedPhone = PhoneNumberUtils.normalizeToSenegalFormat(saved.getTelephone());
+                if (normalizedPhone != null && !normalizedPhone.equals(saved.getTelephone())) {
+                    saved.setTelephone(normalizedPhone);
+                    saved = userRepository.save(saved);
+                    log.info("Saved user with normalized telephone {}", normalizedPhone);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to normalize/save telephone for user {}: {}", saved.getId(), e.getMessage(), e);
+        }
+
         // Generate QR code for the telephone if present
         try {
             String qrText = (saved.getTelephone() != null) ? saved.getTelephone() : saved.getUsername();
+            log.info("🔵 Generating QR for text='{}' userId={}", qrText, saved.getId());
             byte[] png = qrCodeService.generateQrCodePng(qrText, 250, 250);
+            log.info("✅ QR code PNG generated: {} bytes", png != null ? png.length : 0);
+
             String publicId = "qr_" + saved.getId();
+            log.info("🔵 Uploading to Cloudinary with publicId={}", publicId);
             String url = cloudinaryService.uploadImage(png, publicId);
-            saved.setQrCodeUrl(url);
-            userRepository.save(saved);
+            log.info("✅ Cloudinary response: url={}", url);
+
+            if (url != null && !url.isEmpty()) {
+                saved.setQrCodeUrl(url);
+                saved = userRepository.save(saved);
+                log.info("✅ QR code URL saved to user: {}", url);
+            } else {
+                log.warn("⚠️ Cloudinary returned empty/null URL for user {} and publicId {}", saved.getId(), publicId);
+            }
         } catch (Exception e) {
-            log.warn("Failed to generate/upload QR code: {}", e.getMessage());
+            log.error("❌ Failed to generate/upload QR code for user {}: {}", saved.getId(), e.getMessage(), e);
         }
 
         // Generate OTP and send via Twilio

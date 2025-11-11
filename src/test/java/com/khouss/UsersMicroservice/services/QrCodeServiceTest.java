@@ -8,7 +8,7 @@ public class QrCodeServiceTest {
     @Test
     public void testGenerateQrCodePng() throws Exception {
         QrCodeService service = new QrCodeService();
-        byte[] png = service.generateQrCodePng("+221770000000", 200, 200);
+        byte[] png = service.generateQrCodePng("+221774730039", 200, 200);
         assertNotNull(png);
         assertTrue(png.length > 0);
         // PNG signature
