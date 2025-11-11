@@ -6,9 +6,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.UUID;
+import java.math.BigDecimal;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import com.khouss.UsersMicroservice.validators.ValidCni;
 
 @Data
 @NoArgsConstructor
@@ -27,20 +29,27 @@ public class User {
 
     private String password;
 
-    private Boolean enabled;
+    private Boolean enabled = false;
 
-    @Transient
+    // persisted contact fields
     private String email;
-
-    @Transient
     private String prenom;
-
-    @Transient
     private String nom;
-
-    @Transient
     private String adresse;
-
-    @Transient
     private String telephone;
+
+    // new fields
+    @Column(unique = true)
+    @ValidCni
+    private String cni;
+
+    private String role; // e.g., ADMIN, CLIENT, MERCHANT
+
+    private String qrCodeUrl;
+
+    private String otp;
+
+    private Long otpExpiry; // epoch millis
+
+    private BigDecimal balance = BigDecimal.ZERO;
 }

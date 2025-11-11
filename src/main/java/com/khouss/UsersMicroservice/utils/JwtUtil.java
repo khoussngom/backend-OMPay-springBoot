@@ -62,6 +62,18 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateToken(String username, String role) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expirationMs);
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(key)
+                .compact();
+    }
+
     public String extractUsername(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)

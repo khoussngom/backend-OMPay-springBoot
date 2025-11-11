@@ -26,5 +26,10 @@ public class UserRequest {
 
     @Schema(description = "Numéro de téléphone", example = "+774730039")
     private String telephone;
-}
 
+    @Schema(description = "CNI (Senegal)", example = "19876543210987")
+    private String cni;
+
+    @Schema(description = "Role (ADMIN, CLIENT, MERCHANT)")
+    private String role;
+}

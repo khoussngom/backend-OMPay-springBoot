@@ -40,11 +40,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         String role;
         if (a != null) {
-            role = ROLE_USER.getText();
+            role = "ADMIN";
         } else if (c != null) {
-            role = ROLE_USER.getText();
+            // if client has merchant flag or role stored in user, prioritize
+            role = (u.getRole() != null) ? u.getRole() : "CLIENT";
         } else {
-            throw new UsernameNotFoundException("User role not found");
+            role = (u.getRole() != null) ? u.getRole() : "CLIENT";
         }
 
         return org.springframework.security.core.userdetails.User
@@ -55,4 +56,3 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .build();
     }
 }
-

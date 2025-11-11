@@ -51,6 +51,15 @@ public class UserServiceImpl implements UserService {
     @Autowired
     ApplicationEventPublisher eventPublisher;
 
+    @Autowired
+    com.khouss.UsersMicroservice.services.QrCodeService qrCodeService;
+
+    @Autowired
+    com.khouss.UsersMicroservice.services.CloudinaryService cloudinaryService;
+
+    @Autowired
+    com.khouss.UsersMicroservice.services.OtpService otpService;
+
     @Override
     public List<User> findAllUser() {
         return userRepository.findAll();
@@ -206,12 +215,34 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException(Messages.USERNAME_EXISTS.getText());
         }
 
+        // keep raw password as encoded stored
         user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
 
+        // default role
+        if (user.getRole() == null) user.setRole("CLIENT");
 
         User saved = userRepository.save(user);
 
         log.info("User saved with id={}", saved.getId());
+
+        // Generate QR code for the telephone if present
+        try {
+            String qrText = (saved.getTelephone() != null) ? saved.getTelephone() : saved.getUsername();
+            byte[] png = qrCodeService.generateQrCodePng(qrText, 250, 250);
+            String publicId = "qr_" + saved.getId();
+            String url = cloudinaryService.uploadImage(png, publicId);
+            saved.setQrCodeUrl(url);
+            userRepository.save(saved);
+        } catch (Exception e) {
+            log.warn("Failed to generate/upload QR code: {}", e.getMessage());
+        }
+
+        // Generate OTP and send via Twilio
+        try {
+            otpService.generateAndSendOtp(saved);
+        } catch (Exception e) {
+            log.warn("Failed to generate/send OTP: {}", e.getMessage());
+        }
 
         eventPublisher.publishEvent(new UserCreatedEvent(this, saved));
 

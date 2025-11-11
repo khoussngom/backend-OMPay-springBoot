@@ -1,6 +1,7 @@
 package com.khouss.UsersMicroservice.services;
 
 import com.khouss.UsersMicroservice.events.CompteCreateEvent;
+import com.khouss.UsersMicroservice.repo.CompteRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
+import com.khouss.UsersMicroservice.utils.PhoneNumberUtils;
 
 @Component
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ public class EnvoieSmsListener {
     private final Logger logger = LoggerFactory.getLogger(EnvoieSmsListener.class);
 
     private final SmsService smsService;
+    private final CompteRepository compteRepository;
 
     private String genererCodeOtp() {
         int code = (int) (Math.random() * 900000) + 100000;
@@ -33,11 +36,12 @@ public class EnvoieSmsListener {
 
     @org.springframework.context.event.EventListener
     public void onCompteCreatedImmediate(CompteCreateEvent event) {
-        // Listener de secours si l'événement est publié hors transaction ou si le listener transactionnel ne fonctionne pas.
+
         processCompteEvent(event);
     }
 
     private void processCompteEvent(CompteCreateEvent event) {
+       logger.info("SmsService bean utilisé: {}", smsService == null ? "null" : smsService.getClass().getName());
         logger.info("Received Compte Created: {}", event == null ? "null" : event.getCompte());
         if (event == null || event.getCompte() == null) {
             logger.warn("CompteEvent or compte is null, skipping compte creation");
@@ -59,12 +63,32 @@ public class EnvoieSmsListener {
             return;
         }
 
+        // Normaliser le numéro et forcer le préfixe +221
+        String normalized = PhoneNumberUtils.normalizeToSenegalFormat(telephone);
+        if (normalized == null) {
+            logger.warn("Impossible de normaliser le numéro {} pour le compte {}", telephone, compte.getId());
+            return;
+        }
+
+
+        try {
+            compte.setNumeroTelephone(normalized);
+            try {
+                compteRepository.save(compte);
+                logger.info("Numéro normalisé sauvegardé pour le compte {} : {}", compte.getId(), normalized);
+            } catch (Exception e) {
+                logger.warn("Impossible de sauvegarder le compte {} avec numéro normalisé {}: {}", compte.getId(), normalized, e.getMessage());
+            }
+        } catch (Exception e) {
+            logger.warn("Erreur lors de la mise à jour du numéro normalisé pour le compte {}: {}", compte.getId(), e.getMessage());
+        }
+
         String codeOtp = genererCodeOtp();
         String message = String.format("Bonjour, votre code OTP est %s. Votre compte a été créé avec succès.", codeOtp);
 
         try {
-            smsService.sendSMS(telephone, message);
-            logger.info("SMS envoyé au {} pour le compte {}", telephone, compte.getId());
+            smsService.sendSMS(normalized, message);
+            logger.info("SMS envoyé au {} pour le compte {}", normalized, compte.getId());
         } catch (Exception e) {
             logger.error("Échec envoi SMS pour le compte {}: {}", compte.getId(), e.getMessage(), e);
         }

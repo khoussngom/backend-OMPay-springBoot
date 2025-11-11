@@ -30,7 +30,7 @@ class CompteEventIntegrationTest {
     SmsService smsService;
 
     @Test
-    void quand_un_compte_est_créé_le_listener_envoie_un_sms() {
+    void quand_un_compte_est_créé_le_listener_envoie_un_sms() throws Exception {
         Compte c = new Compte();
         c.setNumeroTelephone("+221774730039");
         c.setIdClient(UUID.randomUUID());
@@ -41,4 +41,3 @@ class CompteEventIntegrationTest {
         verify(smsService, timeout(2000)).sendSMS(anyString(), anyString());
     }
 }
-

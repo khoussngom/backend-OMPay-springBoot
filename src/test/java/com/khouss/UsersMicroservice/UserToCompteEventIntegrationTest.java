@@ -28,7 +28,7 @@ class UserToCompteEventIntegrationTest {
     private SmsService smsService;
 
     @Test
-    void quand_un_user_created_est_publie_alors_le_compte_est_cree_et_un_sms_est_envoye() {
+    void quand_un_user_created_est_publie_alors_le_compte_est_cree_et_un_sms_est_envoye() throws Exception {
         User user = new User();
         user.setId(java.util.UUID.randomUUID());
         user.setUsername("testuser");
@@ -62,4 +62,3 @@ class UserToCompteEventIntegrationTest {
         }
     }
 }
-
