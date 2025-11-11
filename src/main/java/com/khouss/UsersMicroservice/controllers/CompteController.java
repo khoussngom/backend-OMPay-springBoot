@@ -104,6 +104,9 @@ public class CompteController {
         }
         Compte compte = comptes.get(0);
         String numeroTelephone = compte.getNumeroTelephone();
+        if (numeroTelephone == null || numeroTelephone.isEmpty()) {
+            return ResponseEntity.status(400).body(Map.of("error", "Numéro de téléphone du compte invalide"));
+        }
         Compte updated = compteService.paiementParNumero(numeroTelephone, codeMarchand, montant);
         return ResponseEntity.ok(OMPayResponse.success(updated, OMPayMessages.PAIEMENT_SUCCES));
     }

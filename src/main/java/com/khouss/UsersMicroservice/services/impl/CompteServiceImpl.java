@@ -51,7 +51,7 @@ public class CompteServiceImpl implements CompteService {
     private final Logger log = LoggerFactory.getLogger(CompteServiceImpl.class);
 
 
-    private final List<String> codesMarchandsValides = List.of("MRC001", "MRC002");
+    private final List<String> codesMarchandsValides = List.of("MRC001", "MRC002", "MRC-0002");
 
     @Autowired
     ApplicationEventPublisher eventPublisher;
