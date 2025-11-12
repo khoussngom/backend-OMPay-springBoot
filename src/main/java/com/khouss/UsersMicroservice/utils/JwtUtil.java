@@ -24,8 +24,12 @@ public class JwtUtil {
     @Value("${EXPIRATION_TIME:360000}")
     private long EXPIRATION_TIME;
 
+    @Value("${REFRESH_TOKEN_EXPIRATION_TIME:604800000}")
+    private long REFRESH_TOKEN_EXPIRATION_TIME;
+
     private Key key;
     private long expirationMs;
+    private long refreshTokenExpirationMs;
 
     @PostConstruct
     public void init() {
@@ -48,7 +52,8 @@ public class JwtUtil {
         }
 
         this.expirationMs = EXPIRATION_TIME;
-        logger.info("JwtUtil initialized (expirationMs={})", expirationMs);
+        this.refreshTokenExpirationMs = REFRESH_TOKEN_EXPIRATION_TIME;
+        logger.info("JwtUtil initialized (expirationMs={}, refreshTokenExpirationMs={})", expirationMs, refreshTokenExpirationMs);
     }
 
     public String generateToken(String username) {
@@ -112,5 +117,26 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .get("role", String.class);
+    }
+
+    public String generateRefreshToken(String username, String role) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + refreshTokenExpirationMs);
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(key)
+                .compact();
+    }
+
+    public Date getExpirationDateFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
     }
 }

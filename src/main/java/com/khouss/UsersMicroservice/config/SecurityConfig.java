@@ -37,6 +37,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/comptes").permitAll()
                 .requestMatchers(HttpMethod.POST, "/comptes", "/comptes/transfert", "/comptes/paiement", "/comptes/client/**").permitAll()
                 .anyRequest().authenticated()
+            )
+            .logout(logout -> logout
+                .logoutUrl("/auth/logout")
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    response.setStatus(200);
+                    response.getWriter().write("{\"message\":\"Logged out successfully\"}");
+                })
             );
 
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

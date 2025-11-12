@@ -1,5 +1,6 @@
 package com.khouss.UsersMicroservice.utils;
 
+import com.khouss.UsersMicroservice.services.BlacklistedTokenService;
 import com.khouss.UsersMicroservice.utils.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,10 +20,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final com.khouss.UsersMicroservice.security.CustomUserDetailsService userDetailsService;
+    private final BlacklistedTokenService blacklistedTokenService;
 
-    public JwtFilter(JwtUtil jwtUtil, com.khouss.UsersMicroservice.security.CustomUserDetailsService userDetailsService) {
+    public JwtFilter(JwtUtil jwtUtil, com.khouss.UsersMicroservice.security.CustomUserDetailsService userDetailsService, BlacklistedTokenService blacklistedTokenService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
+        this.blacklistedTokenService = blacklistedTokenService;
     }
 
     @Override
@@ -38,6 +41,12 @@ public class JwtFilter extends OncePerRequestFilter {
             }
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // Check if token is blacklisted
+                if (blacklistedTokenService.isTokenBlacklisted(token)) {
+                    // Token is blacklisted, skip authentication
+                    return;
+                }
+
                 var userDetails = userDetailsService.loadUserByUsername(username);
 
                 if (jwtUtil.validateToken(token, userDetails.getUsername())) {
