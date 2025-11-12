@@ -15,7 +15,7 @@ public class DataSeeder {
     @Bean
     CommandLineRunner init(UserRepository userRepository, BCryptPasswordEncoder encoder) {
         return args -> {
-            // create admin if not exists
+          
             if (!userRepository.existsByUsername("marakhib")) {
                 User admin = new User();
                 admin.setUsername("marakhib");
@@ -26,7 +26,6 @@ public class DataSeeder {
                 userRepository.save(admin);
             }
 
-            // create merchants
             for (int i = 1; i <= 5; i++) {
                 String code = String.format("MRC-%04d", i);
                 if (!userRepository.existsByUsername(code)) {

@@ -3,9 +3,13 @@ package com.khouss.UsersMicroservice.controllers;
 import com.khouss.UsersMicroservice.constant.OMPayMessages;
 import com.khouss.UsersMicroservice.constant.OMPayResponse;
 import com.khouss.UsersMicroservice.entities.Compte;
+import com.khouss.UsersMicroservice.entities.Transaction;
+import com.khouss.UsersMicroservice.repo.TransactionRepository;
 import com.khouss.UsersMicroservice.services.CompteService;
 import com.khouss.UsersMicroservice.services.UserService;
 import com.khouss.UsersMicroservice.dtos.CompteCreationRequest;
+import com.khouss.UsersMicroservice.dtos.CompteInfoDto;
+import com.khouss.UsersMicroservice.dtos.TransactionInfoDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +33,7 @@ public class CompteController {
 
     private final CompteService compteService;
     private final UserService userService;
+    private final TransactionRepository transactionRepository;
 
     @GetMapping
     @Operation(summary = "Lister les comptes", description = "Retourne la liste de tous les comptes avec leur solde courant")
@@ -139,5 +145,53 @@ public class CompteController {
         Compte compte = comptes.get(0);
         BigDecimal solde = compte.getSolde() != null ? compte.getSolde() : BigDecimal.ZERO;
         return ResponseEntity.ok(OMPayResponse.success(Map.of("solde", solde), OMPayMessages.LISTE_COMPTES));
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Afficher les informations du compte connecté", description = "Retourne les informations du compte de l'utilisateur connecté avec les transactions signées")
+    public ResponseEntity<Map<String, Object>> getMonCompte() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        var user = userService.FindByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+        // Assuming one compte per user
+        var comptes = compteService.listerComptes().stream()
+                .filter(c -> c.getIdUser() != null && c.getIdUser().equals(user.getId()))
+                .toList();
+        if (comptes.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Compte not found"));
+        }
+        Compte compte = comptes.get(0);
+
+        // Récupérer les transactions sortantes et entrantes
+        List<Transaction> transactionsSortantes = transactionRepository.findByCompteId(compte.getId());
+        List<Transaction> transactionsEntrantes = transactionRepository.findByCompteDestId(compte.getId());
+
+        List<TransactionInfoDto> transactionInfos = new ArrayList<>();
+
+        // Traiter les transactions sortantes
+        for (Transaction t : transactionsSortantes) {
+            BigDecimal montant = t.getMontant();
+            if (t.getType() == Transaction.Type.TRANSFERT || t.getType() == Transaction.Type.PAIEMENT) {
+                montant = montant.negate(); // sortant
+            } // DEPOT reste positif
+            transactionInfos.add(new TransactionInfoDto(t.getType().toString(), montant, t.getDate(), t.getCodeMarchand()));
+        }
+
+        // Traiter les transactions entrantes (transferts entrants)
+        for (Transaction t : transactionsEntrantes) {
+            if (t.getType() == Transaction.Type.TRANSFERT) {
+                transactionInfos.add(new TransactionInfoDto("TRANSFERT_ENTRANT", t.getMontant(), t.getDate(), null));
+            }
+        }
+
+        // Trier par date décroissante
+        transactionInfos.sort((a, b) -> b.getDate().compareTo(a.getDate()));
+
+        CompteInfoDto compteInfo = new CompteInfoDto(compte.getNumeroTelephone(), compte.getDateOuverture(), transactionInfos);
+
+        return ResponseEntity.ok(OMPayResponse.success(compteInfo, OMPayMessages.LISTE_COMPTES));
     }
 }
