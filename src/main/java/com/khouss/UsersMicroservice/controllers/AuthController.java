@@ -93,13 +93,10 @@ public class AuthController {
     private ResponseEntity<?> generateTokensResponse(User user) {
         String accessToken = jwtUtil.generateToken(user.getUsername(), user.getRole());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-        Date accessTokenExpiry = jwtUtil.getExpirationDateFromToken(accessToken);
 
         return ResponseEntity.ok(Map.of(
             "accessToken", accessToken,
-            "refreshToken", refreshToken.getToken(),
-            "accessTokenExpiry", accessTokenExpiry.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(),
-            "user", user
+            "refreshToken", refreshToken.getToken()
         ));
     }
 }

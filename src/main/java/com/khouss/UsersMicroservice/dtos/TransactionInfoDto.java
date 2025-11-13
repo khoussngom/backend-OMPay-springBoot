@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -12,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class TransactionInfoDto {
     private String type;
-    private BigDecimal montant; // avec signe
+    private String montant; // avec signe comme string
     private LocalDateTime date;
     private String codeMarchand; // si applicable
 }

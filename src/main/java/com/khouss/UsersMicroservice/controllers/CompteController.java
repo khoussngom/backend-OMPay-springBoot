@@ -75,12 +75,29 @@ public class CompteController {
     }
 
     @PostMapping("/transfert")
-    @Operation(summary = "Transfert par numéro", description = "Effectue un transfert d'un numéro source vers un numéro destinataire")
-    public ResponseEntity<Map<String, Object>> transfertParNumero(@RequestParam("source") String sourceNumero,
-                                                                   @RequestParam("dest") String destNumero,
+    @Operation(summary = "Transfert par numéro", description = "Effectue un transfert du compte connecté vers un numéro destinataire")
+    public ResponseEntity<Map<String, Object>> transfertParNumero(@RequestParam("dest") String destNumero,
                                                                    @RequestParam BigDecimal montant) {
-        Compte compte = compteService.transfertParNumero(sourceNumero, destNumero, montant);
-        return ResponseEntity.ok(OMPayResponse.success(compte, OMPayMessages.TRANSFERT_SUCCES));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        var user = userService.FindByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+        // Find the compte for the user
+        var comptes = compteService.listerComptes().stream()
+                .filter(c -> c.getIdUser() != null && c.getIdUser().equals(user.getId()))
+                .toList();
+        if (comptes.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Compte not found"));
+        }
+        Compte compte = comptes.get(0);
+        String sourceNumero = compte.getNumeroTelephone();
+        if (sourceNumero == null || sourceNumero.isEmpty()) {
+            return ResponseEntity.status(400).body(Map.of("error", "Numéro de téléphone du compte invalide"));
+        }
+        Compte updated = compteService.transfertParNumero(sourceNumero, destNumero, montant);
+        return ResponseEntity.ok(OMPayResponse.success(updated, OMPayMessages.TRANSFERT_SUCCES));
     }
 
     // @PostMapping("/{id}/paiement")
@@ -174,23 +191,30 @@ public class CompteController {
         // Traiter les transactions sortantes
         for (Transaction t : transactionsSortantes) {
             BigDecimal montant = t.getMontant();
-            if (t.getType() == Transaction.Type.TRANSFERT || t.getType() == Transaction.Type.PAIEMENT) {
-                montant = montant.negate(); // sortant
-            } // DEPOT reste positif
-            transactionInfos.add(new TransactionInfoDto(t.getType().toString(), montant, t.getDate(), t.getCodeMarchand()));
+            String montantStr;
+            if (t.getType() == Transaction.Type.DEPOT) {
+                montantStr = "+" + montant.toString();
+            } else {
+                montantStr = "-" + montant.toString();
+            }
+            transactionInfos.add(new TransactionInfoDto(t.getType().toString(), montantStr, t.getDate(), t.getCodeMarchand()));
         }
 
         // Traiter les transactions entrantes (transferts entrants)
         for (Transaction t : transactionsEntrantes) {
             if (t.getType() == Transaction.Type.TRANSFERT) {
-                transactionInfos.add(new TransactionInfoDto("TRANSFERT_ENTRANT", t.getMontant(), t.getDate(), null));
+                String montantStr = "+" + t.getMontant().toString();
+                transactionInfos.add(new TransactionInfoDto("TRANSFERT_ENTRANT", montantStr, t.getDate(), null));
             }
         }
 
         // Trier par date décroissante
         transactionInfos.sort((a, b) -> b.getDate().compareTo(a.getDate()));
 
-        CompteInfoDto compteInfo = new CompteInfoDto(compte.getNumeroTelephone(), compte.getDateOuverture(), transactionInfos);
+        // Calculer le solde
+        BigDecimal solde = compteService.calculerSolde(compte.getId());
+
+        CompteInfoDto compteInfo = new CompteInfoDto(compte.getNumeroTelephone(), compte.getDateOuverture(), solde, transactionInfos);
 
         return ResponseEntity.ok(OMPayResponse.success(compteInfo, OMPayMessages.LISTE_COMPTES));
     }

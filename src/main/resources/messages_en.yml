@@ -1,0 +1,13 @@
+# English messages
+COMPTE_INEXISTANT: "Account does not exist"
+COMPTE_DEJA_EXISTANT: "Account already exists"
+COMPTE_DESTINATAIRE_INEXISTANT: "Recipient account does not exist"
+CODE_MARCHAND_INEXISTANT: "Merchant code does not exist"
+SOLDE_INSUFFISANT: "Insufficient balance"
+CLIENT_INEXISTANT: "Client does not exist, please go through user creation"
+NUMERO_INVALIDE: "Invalid number: not linked to this client"
+DEPOT_SUCCES: "Deposit successful"
+TRANSFERT_SUCCES: "Transfer successful"
+PAIEMENT_SUCCES: "Payment successful"
+COMPTE_CREE_SUCCES: "Account created successfully"
+LISTE_COMPTES: "Account list retrieved successfully"
