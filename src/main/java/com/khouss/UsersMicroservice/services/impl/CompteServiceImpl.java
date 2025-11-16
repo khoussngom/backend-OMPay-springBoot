@@ -281,10 +281,10 @@ public class CompteServiceImpl implements CompteService {
     }
 
     @Override
-    public Compte paiement(UUID compteId, String codeMarchand, BigDecimal montant) {
+    public Compte paiement(UUID compteId, String marchand, BigDecimal montant) {
         Compte compte = compteRepository.findById(compteId)
                 .orElseThrow(() -> new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage()));
-        if (!codesMarchandsValides.contains(codeMarchand)) {
+        if (!codesMarchandsValides.contains(marchand)) {
             throw new CodeMarchandNotFoundException(OMPayMessages.CODE_MARCHAND_INEXISTANT.getMessage());
         }
         BigDecimal solde = calculerSolde(compte.getId());
@@ -296,7 +296,7 @@ public class CompteServiceImpl implements CompteService {
         tx.setCompteId(compte.getId());
         tx.setType(Type.PAIEMENT);
         tx.setMontant(montant);
-        tx.setCodeMarchand(codeMarchand);
+        tx.setCodeMarchand(marchand);
         tx.setDate(LocalDateTime.now());
         transactionRepository.save(tx);
         compte.setSolde(calculerSolde(compte.getId()));
@@ -334,27 +334,42 @@ public class CompteServiceImpl implements CompteService {
     }
 
     @Override
-    public Compte paiementParNumero(String numeroTelephone, String codeMarchand, BigDecimal montant) {
+    public Compte paiementParNumero(String numeroTelephone, String marchand, BigDecimal montant) {
         String normalizedNumero = PhoneNumberUtils.normalizeToSenegalFormat(numeroTelephone);
         if (normalizedNumero == null) {
             throw new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage());
         }
         Compte compte = compteRepository.findByNumeroTelephone(normalizedNumero)
                 .orElseThrow(() -> new CompteNotFoundException(OMPayMessages.COMPTE_INEXISTANT.getMessage()));
-        if (!codesMarchandsValides.contains(codeMarchand)) {
-            throw new CodeMarchandNotFoundException(OMPayMessages.CODE_MARCHAND_INEXISTANT.getMessage());
-        }
+
         BigDecimal solde = calculerSolde(compte.getId());
         if (solde.compareTo(montant) < 0) {
             throw new SoldeInsuffisantException(OMPayMessages.SOLDE_INSUFFISANT.getMessage());
         }
+
         Transaction tx = new Transaction();
         tx.setCompte(compte);
         tx.setCompteId(compte.getId());
         tx.setType(Type.PAIEMENT);
         tx.setMontant(montant);
-        tx.setCodeMarchand(codeMarchand);
+        tx.setCodeMarchand(marchand);
         tx.setDate(LocalDateTime.now());
+
+        // Check if marchand is a valid code
+        if (codesMarchandsValides.contains(marchand)) {
+            // Payment to merchant code: no destination account
+            tx.setCompteDestId(null);
+        } else {
+            // Treat as merchant numero: find destination account
+            String normalizedMarchand = PhoneNumberUtils.normalizeToSenegalFormat(marchand);
+            if (normalizedMarchand == null) {
+                throw new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage());
+            }
+            Compte destCompte = compteRepository.findByNumeroTelephone(normalizedMarchand)
+                    .orElseThrow(() -> new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage()));
+            tx.setCompteDestId(destCompte.getId());
+        }
+
         transactionRepository.save(tx);
         compte.setSolde(calculerSolde(compte.getId()));
         return compte;
@@ -385,7 +400,12 @@ public class CompteServiceImpl implements CompteService {
                 .map(Transaction::getMontant)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return depots.add(transfertsEntrants).subtract(transfertsSortants).subtract(paiements);
+        BigDecimal paiementsEntrants = entrees.stream()
+                .filter(t -> t.getType() == Type.PAIEMENT)
+                .map(Transaction::getMontant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return depots.add(transfertsEntrants).add(paiementsEntrants).subtract(transfertsSortants).subtract(paiements);
     }
 
     @Override

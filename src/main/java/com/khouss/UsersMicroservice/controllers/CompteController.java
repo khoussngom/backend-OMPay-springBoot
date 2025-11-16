@@ -110,8 +110,8 @@ public class CompteController {
 
     @PostMapping("/paiement")
     @Operation(summary = "Paiement marchand", description = "Effectue un paiement marchand avec le numéro du compte connecté")
-    public ResponseEntity<Map<String, Object>> paiement(@RequestParam("codeMarchand") String codeMarchand,
-                                                        @RequestParam BigDecimal montant) {
+    public ResponseEntity<Map<String, Object>> paiement(@RequestParam("marchand") String marchand,
+                                                         @RequestParam BigDecimal montant) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
         var user = userService.FindByUsername(username);
@@ -130,7 +130,7 @@ public class CompteController {
         if (numeroTelephone == null || numeroTelephone.isEmpty()) {
             return ResponseEntity.status(400).body(Map.of("error", "Numéro de téléphone du compte invalide"));
         }
-        Compte updated = compteService.paiementParNumero(numeroTelephone, codeMarchand, montant);
+        Compte updated = compteService.paiementParNumero(numeroTelephone, marchand, montant);
         return ResponseEntity.ok(OMPayResponse.success(updated, OMPayMessages.PAIEMENT_SUCCES));
     }
 

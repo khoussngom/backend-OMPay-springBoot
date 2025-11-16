@@ -10,7 +10,7 @@ public interface CompteService {
     Compte deposer(UUID compteId, BigDecimal montant);
     Compte deposerParNumero(String numeroTelephone, BigDecimal montant);
     Compte transfertParNumero(String sourceNumero, String destNumero, BigDecimal montant);
-    Compte paiementParNumero(String numeroTelephone, String codeMarchand, BigDecimal montant);
+    Compte paiementParNumero(String numeroTelephone, String marchand, BigDecimal montant);
     Compte transfert(UUID compteSource, UUID compteDest, BigDecimal montant);
     Compte paiement(UUID compteId, String codeMarchand, BigDecimal montant);
     BigDecimal calculerSolde(UUID compteId);
