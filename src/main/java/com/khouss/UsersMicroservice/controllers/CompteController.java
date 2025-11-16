@@ -109,7 +109,7 @@ public class CompteController {
     // }
 
     @PostMapping("/paiement")
-    @Operation(summary = "Paiement marchand", description = "Effectue un paiement marchand avec le numéro du compte connecté")
+    @Operation(summary = "Paiement marchand", description = "Effectue un paiement marchand avec le numéro du compte connecté. Le paramètre 'marchand' peut être un code marchand (ex: MRC001) ou un numéro de téléphone marchand.")
     public ResponseEntity<Map<String, Object>> paiement(@RequestParam("marchand") String marchand,
                                                          @RequestParam BigDecimal montant) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
