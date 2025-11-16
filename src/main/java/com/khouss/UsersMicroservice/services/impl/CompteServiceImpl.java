@@ -361,7 +361,7 @@ public class CompteServiceImpl implements CompteService {
             // Payment to merchant code: no destination account
             tx.setCompteDestId(null);
         } else {
-            // Treat as merchant numero: verify user exists by telephone
+            // Treat as merchant numero: verify user exists by telephone and is MERCHANT
             var tempUser = userRepository.findByTelephone(marchand);
             if (tempUser == null) {
                 // Try without +221 prefix if present
@@ -380,6 +380,9 @@ public class CompteServiceImpl implements CompteService {
                 if (tempUser == null) {
                     throw new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage());
                 }
+            }
+            if (!"MERCHANT".equals(tempUser.getRole())) {
+                throw new IllegalArgumentException("Paiement ne peut être effectué que vers un utilisateur de type MARCHAND");
             }
             // Merchants don't have comptes, so no compteDestId, just debit from source
             tx.setCompteDestId(null);
