@@ -4,6 +4,7 @@ import com.khouss.UsersMicroservice.constant.OMPayMessages;
 import com.khouss.UsersMicroservice.entities.Client;
 import com.khouss.UsersMicroservice.entities.Compte;
 import com.khouss.UsersMicroservice.entities.Transaction;
+import com.khouss.UsersMicroservice.entities.User;
 import com.khouss.UsersMicroservice.entities.Transaction.Type;
 import com.khouss.UsersMicroservice.events.CompteCreateEvent;
 import com.khouss.UsersMicroservice.events.UserCreatedEvent;
@@ -360,14 +361,28 @@ public class CompteServiceImpl implements CompteService {
             // Payment to merchant code: no destination account
             tx.setCompteDestId(null);
         } else {
-            // Treat as merchant numero: find destination account
-            String normalizedMarchand = PhoneNumberUtils.normalizeToSenegalFormat(marchand);
-            if (normalizedMarchand == null) {
-                throw new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage());
+            // Treat as merchant numero: verify user exists by telephone
+            var tempUser = userRepository.findByTelephone(marchand);
+            if (tempUser == null) {
+                // Try without +221 prefix if present
+                String searchTel = marchand;
+                if (searchTel.startsWith("+221")) {
+                    searchTel = searchTel.substring(4);
+                    tempUser = userRepository.findByTelephone(searchTel);
+                }
+                if (tempUser == null) {
+                    // Try normalized
+                    String normalizedMarchand = PhoneNumberUtils.normalizeToSenegalFormat(marchand);
+                    if (normalizedMarchand != null && !normalizedMarchand.equals(marchand)) {
+                        tempUser = userRepository.findByTelephone(normalizedMarchand);
+                    }
+                }
+                if (tempUser == null) {
+                    throw new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage());
+                }
             }
-            Compte destCompte = compteRepository.findByNumeroTelephone(normalizedMarchand)
-                    .orElseThrow(() -> new DestinataireNotFoundException(OMPayMessages.COMPTE_DESTINATAIRE_INEXISTANT.getMessage()));
-            tx.setCompteDestId(destCompte.getId());
+            // Merchants don't have comptes, so no compteDestId, just debit from source
+            tx.setCompteDestId(null);
         }
 
         transactionRepository.save(tx);
@@ -400,12 +415,7 @@ public class CompteServiceImpl implements CompteService {
                 .map(Transaction::getMontant)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal paiementsEntrants = entrees.stream()
-                .filter(t -> t.getType() == Type.PAIEMENT)
-                .map(Transaction::getMontant)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return depots.add(transfertsEntrants).add(paiementsEntrants).subtract(transfertsSortants).subtract(paiements);
+        return depots.add(transfertsEntrants).subtract(transfertsSortants).subtract(paiements);
     }
 
     @Override
