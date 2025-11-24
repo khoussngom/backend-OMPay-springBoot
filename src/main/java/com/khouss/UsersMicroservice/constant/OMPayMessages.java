@@ -15,7 +15,8 @@ public enum OMPayMessages {
     TRANSFERT_SUCCES("Transfert effectué avec succès"),
     PAIEMENT_SUCCES("Paiement effectué avec succès"),
     COMPTE_CREE_SUCCES("Compte créé avec succès"),
-    LISTE_COMPTES("Liste des comptes récupérée avec succès");
+    LISTE_COMPTES("Liste des comptes récupérée avec succès"),
+    LISTE_TRANSFERTS("Liste des transferts récupérée avec succès");
 
     private final String message;
 
