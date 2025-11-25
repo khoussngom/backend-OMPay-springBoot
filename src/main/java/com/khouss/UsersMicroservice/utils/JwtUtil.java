@@ -21,7 +21,7 @@ public class JwtUtil {
     @Value("${SECRET_KEY:MarakhibSecretKeyForJwtTokenGeneration2025}")
     private String SECRET;
 
-    @Value("${EXPIRATION_TIME:360000}")
+    @Value("${EXPIRATION_TIME:3960000}")
     private long EXPIRATION_TIME;
 
     @Value("${REFRESH_TOKEN_EXPIRATION_TIME:604800000}")

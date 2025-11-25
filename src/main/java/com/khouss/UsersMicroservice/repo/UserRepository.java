@@ -1,10 +1,14 @@
 package com.khouss.UsersMicroservice.repo;
 
 import com.khouss.UsersMicroservice.entities.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+2025-11-25 09:48:19
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
