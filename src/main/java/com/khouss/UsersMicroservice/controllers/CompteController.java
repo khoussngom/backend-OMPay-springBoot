@@ -2,16 +2,21 @@ package com.khouss.UsersMicroservice.controllers;
 
 import com.khouss.UsersMicroservice.constant.OMPayMessages;
 import com.khouss.UsersMicroservice.constant.OMPayResponse;
-import com.khouss.UsersMicroservice.entities.Compte;
-import com.khouss.UsersMicroservice.entities.Transaction;
-import com.khouss.UsersMicroservice.repo.TransactionRepository;
-import com.khouss.UsersMicroservice.services.CompteService;
-import com.khouss.UsersMicroservice.services.UserService;
 import com.khouss.UsersMicroservice.dtos.CompteCreationRequest;
 import com.khouss.UsersMicroservice.dtos.CompteInfoDto;
 import com.khouss.UsersMicroservice.dtos.TransactionInfoDto;
+import com.khouss.UsersMicroservice.entities.Compte;
+import com.khouss.UsersMicroservice.entities.Transaction;
+import com.khouss.UsersMicroservice.repo.CompteRepository;
+import com.khouss.UsersMicroservice.repo.TransactionRepository;
+import com.khouss.UsersMicroservice.services.CompteService;
+import com.khouss.UsersMicroservice.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,11 +24,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 @Tag(name = "Comptes")
 @RestController
@@ -34,6 +34,7 @@ public class CompteController {
     private final CompteService compteService;
     private final UserService userService;
     private final TransactionRepository transactionRepository;
+    private final CompteRepository compteRepository;
 
     @GetMapping
     @Operation(summary = "Lister les comptes", description = "Retourne la liste de tous les comptes avec leur solde courant")
@@ -84,7 +85,7 @@ public class CompteController {
         if (user == null) {
             return ResponseEntity.status(404).body(Map.of("error", "User not found"));
         }
-        // Find the compte for the user
+      
         var comptes = compteService.listerComptes().stream()
                 .filter(c -> c.getIdUser() != null && c.getIdUser().equals(user.getId()))
                 .toList();
@@ -118,7 +119,8 @@ public class CompteController {
         if (user == null) {
             return ResponseEntity.status(404).body(Map.of("error", "User not found"));
         }
-        // Find the compte for the user
+    
+        
         var comptes = compteService.listerComptes().stream()
                 .filter(c -> c.getIdUser() != null && c.getIdUser().equals(user.getId()))
                 .toList();
@@ -182,36 +184,53 @@ public class CompteController {
         }
         Compte compte = comptes.get(0);
 
-        // Récupérer les transactions sortantes et entrantes
+    
         List<Transaction> transactionsSortantes = transactionRepository.findByCompteId(compte.getId());
         List<Transaction> transactionsEntrantes = transactionRepository.findByCompteDestId(compte.getId());
 
         List<TransactionInfoDto> transactionInfos = new ArrayList<>();
 
-        // Traiter les transactions sortantes
+    
         for (Transaction t : transactionsSortantes) {
             BigDecimal montant = t.getMontant();
             String montantStr;
+            String numero = null;
             if (t.getType() == Transaction.Type.DEPOT) {
                 montantStr = "+" + montant.toString();
             } else {
                 montantStr = "-" + montant.toString();
+                // Pour les transferts sortants, récupérer le numéro du destinataire
+                if (t.getType() == Transaction.Type.TRANSFERT && t.getCompteDestId() != null) {
+                    Compte destCompte = compteRepository.findById(t.getCompteDestId()).orElse(null);
+                    if (destCompte != null) {
+                        numero = destCompte.getNumeroTelephone();
+                    }
+                } else if (t.getType() == Transaction.Type.PAIEMENT) {
+                    // Pour les paiements, le numéro est le codeMarchand (qui peut être un numéro de téléphone)
+                    numero = t.getCodeMarchand();
+                }
             }
-            transactionInfos.add(new TransactionInfoDto(t.getType().toString(), montantStr, t.getDate(), t.getCodeMarchand()));
+            transactionInfos.add(new TransactionInfoDto(t.getType().toString(), montantStr, t.getDate(), t.getCodeMarchand(), numero));
         }
 
-        // Traiter les transactions entrantes (transferts entrants)
         for (Transaction t : transactionsEntrantes) {
             if (t.getType() == Transaction.Type.TRANSFERT) {
                 String montantStr = "+" + t.getMontant().toString();
-                transactionInfos.add(new TransactionInfoDto("TRANSFERT_ENTRANT", montantStr, t.getDate(), null));
+                // Pour les transferts entrants, récupérer le numéro de l'expéditeur
+                String numero = null;
+                if (t.getCompteId() != null) {
+                    Compte sourceCompte = compteRepository.findById(t.getCompteId()).orElse(null);
+                    if (sourceCompte != null) {
+                        numero = sourceCompte.getNumeroTelephone();
+                    }
+                }
+                transactionInfos.add(new TransactionInfoDto("TRANSFERT_ENTRANT", montantStr, t.getDate(), null, numero));
             }
         }
 
-        // Trier par date décroissante
         transactionInfos.sort((a, b) -> b.getDate().compareTo(a.getDate()));
 
-        // Calculer le solde
+
         BigDecimal solde = compteService.calculerSolde(compte.getId());
 
         CompteInfoDto compteInfo = new CompteInfoDto(compte.getNumeroTelephone(), compte.getDateOuverture(), solde, transactionInfos);

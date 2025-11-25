@@ -5,14 +5,14 @@ import com.khouss.UsersMicroservice.entities.User;
 import com.khouss.UsersMicroservice.exception.ResourceNotFoundException;
 import com.khouss.UsersMicroservice.repo.RefreshTokenRepository;
 import com.khouss.UsersMicroservice.services.RefreshTokenService;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +26,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     @Transactional
     public RefreshToken createRefreshToken(User user) {
-        // Delete existing refresh token for user
+        
         refreshTokenRepository.deleteByUser(user);
 
         LocalDateTime now = LocalDateTime.now();

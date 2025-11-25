@@ -18,7 +18,7 @@ public class SmsServiceImpl implements SmsService {
     private final String accountSid;
     private final String authToken;
 
-    // Constructor injection with @Value so Spring can wire config, and tests can instantiate directly
+    
     public SmsServiceImpl(@Value("${TWILIO_PHONE_NUMBER:${TWILIO_FROM:}}") String fromPhoneNumber,
                           @Value("${TWILIO_ACCOUNT_SID:}") String accountSid,
                           @Value("${TWILIO_AUTH_TOKEN:${TWILIO_TOKEN:}}") String authToken) {

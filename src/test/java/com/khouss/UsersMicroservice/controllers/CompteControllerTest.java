@@ -44,7 +44,7 @@ class CompteControllerTest {
 
     @Test
     void creerCompte_retourne404_siClientInexistant() throws Exception {
-        // Arrange
+
         CompteCreationRequest req = new CompteCreationRequest();
         req.setUsername("khoussngom");
         req.setAncienNumeroTelephone("774730038");
@@ -53,7 +53,7 @@ class CompteControllerTest {
         when(compteService.creerCompteMajNumeroPourUsername(anyString(), anyString(), anyString()))
                 .thenThrow(new ClientNotFoundException(OMPayMessages.CLIENT_INEXISTANT.getMessage()));
 
-        // Act & Assert
+
         mockMvc.perform(post("/comptes")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))

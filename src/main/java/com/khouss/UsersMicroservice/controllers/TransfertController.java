@@ -34,20 +34,20 @@ public class TransfertController {
     @PostMapping("/schedule")
     @Operation(summary = "Programmer un transfert", description = "Programme un transfert depuis le compte de l'utilisateur connecté vers un numéro de téléphone valide, à une date et heure précise (heure, minute, jour, mois, année uniquement)")
     public ResponseEntity<Map<String, Object>> scheduleTransfer(@RequestBody ScheduleTransferRequest request, Authentication authentication) {
-        // Get current user
+
         String username = authentication.getName();
         User currentUser = userRepository.findByUsername(username);
         if (currentUser == null) {
             throw new RuntimeException("Utilisateur non trouvé");
         }
-        // Find compte of current user
+
         Compte compteSource = compteRepository.findByIdUser(currentUser.getId())
                 .orElseThrow(() -> new CompteNotFoundException("Compte source non trouvé pour l'utilisateur connecté"));
-        // Find destination compte by phone
+
         Compte compteDest = compteRepository.findByNumeroTelephone(request.getNumeroTelephoneDest())
                 .orElseThrow(() -> new DestinataireNotFoundException("Destinataire non trouvé avec ce numéro de téléphone"));
 
-        // Validate dateProgrammee: only hour, minute, day, month, year
+
         if (request.getDateProgrammee().getSecond() != 0 || request.getDateProgrammee().getNano() != 0) {
             throw new IllegalArgumentException("La date programmée ne doit contenir que heure, minute, jour, mois et année");
         }
